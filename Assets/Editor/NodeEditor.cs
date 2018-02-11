@@ -6,12 +6,6 @@ using System.Text;
 
 public class NodeEditor : EditorWindow {
 
-    enum NodeType
-    {
-        Node,
-        Option
-    }
-
     List<Rect> windows = new List<Rect>();
     List<NodeType> windowTypes = new List<NodeType>();
     List<int> nodeTypesIDs = new List<int>();
@@ -47,7 +41,7 @@ public class NodeEditor : EditorWindow {
     static void ShowEditor()
     {
         NodeEditor editor = EditorWindow.GetWindow<NodeEditor>();
-
+        editor.wantsMouseMove = true;        
         //InitStyles();
     }    
 
@@ -102,13 +96,37 @@ public class NodeEditor : EditorWindow {
 
     void UpdateCurves()
     {
-        if (nodeToNodeToAttach.Count == 2)
+        Event currentEvent = Event.current;
+        Rect cursorRect = new Rect(currentEvent.mousePosition, new Vector2(5, 5));
+
+        foreach(Rect win in windows)
         {
-            if (!nodeToNodeAttached.ContainsKey(nodeToNodeToAttach[0]))
+            if(win.Contains(currentEvent.mousePosition))
             {
-                nodeToNodeAttached.Add(nodeToNodeToAttach[0], nodeToNodeToAttach[1]);
+                cursorRect = win;
             }
-            nodeToNodeToAttach.Clear();
+        }
+
+        bool repaint = false;
+
+
+        if (nodeToNodeToAttach.Count == 1)
+        {            
+            int from = nodesIndexes[nodeToNodeToAttach[0]];
+
+            DrawNodeCurve(windows[from], cursorRect, config.ImmidiateNodeConnection);
+            repaint = true;            
+        }
+        else
+        {
+            if (nodeToNodeToAttach.Count == 2)
+            {
+                if (!nodeToNodeAttached.ContainsKey(nodeToNodeToAttach[0]))
+                {
+                    nodeToNodeAttached.Add(nodeToNodeToAttach[0], nodeToNodeToAttach[1]);
+                }
+                nodeToNodeToAttach.Clear();
+            }
         }
 
         if (nodeToNodeAttached.Count >= 1)
@@ -124,19 +142,29 @@ public class NodeEditor : EditorWindow {
             }
         }
 
-        if(nodeToOptionToAttach.Count == 2)
+        if (nodeToOptionToAttach.Count == 1)
         {
-            if(!nodesOptions.ContainsKey(nodeToOptionToAttach[0]))
-            {
-                nodesOptions.Add(nodeToOptionToAttach[0], new HashSet<int>());
-            }
+            int from = nodesIndexes[nodeToOptionToAttach[0]];
 
-            if(!nodesOptions[nodeToOptionToAttach[0]].Contains(nodeToOptionToAttach[1]))
+            DrawNodeCurve(windows[from], cursorRect, config.NodeToOptionConnection);
+            repaint = true;
+        }
+        else
+        {
+            if (nodeToOptionToAttach.Count == 2)
             {
-                nodesOptions[nodeToOptionToAttach[0]].Add(nodeToOptionToAttach[1]);
-            }
+                if (!nodesOptions.ContainsKey(nodeToOptionToAttach[0]))
+                {
+                    nodesOptions.Add(nodeToOptionToAttach[0], new HashSet<int>());
+                }
 
-            nodeToOptionToAttach.Clear();
+                if (!nodesOptions[nodeToOptionToAttach[0]].Contains(nodeToOptionToAttach[1]))
+                {
+                    nodesOptions[nodeToOptionToAttach[0]].Add(nodeToOptionToAttach[1]);
+                }
+
+                nodeToOptionToAttach.Clear();
+            }
         }
 
         if(nodesOptions.Count >= 1)
@@ -153,14 +181,24 @@ public class NodeEditor : EditorWindow {
             }
         }
 
-        if(optionToNodeToAttach.Count == 2)
+        if (optionToNodeToAttach.Count == 1)
         {
-            if(!optionToNodeAttached.ContainsKey(optionToNodeToAttach[0]))
-            {
-                optionToNodeAttached.Add(optionToNodeToAttach[0], optionToNodeToAttach[1]);
-            }
+            int from = optionsIndexes[optionToNodeToAttach[0]];
 
-            optionToNodeToAttach.Clear();
+            DrawNodeCurve(windows[from], cursorRect, config.OptionToNodeConnection);
+            repaint = true;
+        }
+        else
+        {
+            if (optionToNodeToAttach.Count == 2)
+            {
+                if (!optionToNodeAttached.ContainsKey(optionToNodeToAttach[0]))
+                {
+                    optionToNodeAttached.Add(optionToNodeToAttach[0], optionToNodeToAttach[1]);
+                }
+
+                optionToNodeToAttach.Clear();
+            }
         }
 
         if(optionToNodeAttached.Count >= 1)
@@ -174,6 +212,11 @@ public class NodeEditor : EditorWindow {
 
                 DrawNodeCurve(windows[from], windows[to], config.OptionToNodeConnection);
             }
+        }
+
+        if(repaint)
+        {
+            Repaint();
         }
     }
 
@@ -418,6 +461,8 @@ public class NodeEditor : EditorWindow {
                         if (GUILayout.Button("Set"))
                         {
                             optionToNodeToAttach.Add(typeid);
+                            nodeToOptionToAttach.Clear();
+                            nodeToNodeToAttach.Clear();
                         }
                     }
                     else
@@ -476,6 +521,8 @@ public class NodeEditor : EditorWindow {
                 if (GUILayout.Button("Make Immidiate Node"))
                 {
                     nodeToNodeToAttach.Add(typeid);
+                    optionToNodeToAttach.Clear();
+                    nodeToOptionToAttach.Clear();
                     immidiateNodeDummy[typeid] = true;
 
                     //nodesOptions.Remove(typeid);
@@ -523,7 +570,22 @@ public class NodeEditor : EditorWindow {
             GUILayout.BeginHorizontal();
             {
                 int nxt = nodeToNodeAttached[typeid];
-                GUILayout.Label("Next Node: " + ((nxt == -1)? "[EXIT]" : nxt.ToString()));
+                GUILayout.Label("Next Node: ", GUILayout.Width(80));
+
+                bool tempCont = nodeToNodeAttached.ContainsKey(typeid);
+                string destination =
+                    (tempCont) ?
+                        nodeToNodeAttached[typeid].ToString() :
+                        "[EXIT]";
+                if (tempCont)
+                {
+                    Rect focus = windows[nodesIndexes[nxt]];
+                    DrawJumpToButton(destination, focus, GUILayout.Width(50));
+                }
+                else
+                {
+                    GUILayout.Label(destination, GUILayout.Width(50));
+                }
 
                 if (GUILayout.Button("Clear"))
                 {
@@ -556,9 +618,12 @@ public class NodeEditor : EditorWindow {
 
         if(!immidiateNodeDummy[typeid])
         {
-            if(GUILayout.Button("Add Option"))
+            if(GUILayout.Button("Append Option"))
             {
                 nodeToOptionToAttach.Add(typeid);
+                if (nodeToNodeToAttach.Count == 1) immidiateNodeDummy[nodeToNodeToAttach[0]] = false;
+                nodeToNodeToAttach.Clear();
+                optionToNodeToAttach.Clear();
             }
 
             if (nodesOptions.ContainsKey(typeid))
@@ -809,7 +874,7 @@ public class NodeEditor : EditorWindow {
         int minDistX = 999;
         int minDistY = 999;
 
-        float curveModifier = 0.9f;
+        float curveModifier = 1f;
 
         for(int x = 0; x < startPotCount; x++)
         {
