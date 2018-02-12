@@ -20,6 +20,7 @@ public class NodeEditor : EditorWindow {
     List<bool> immidiateNodeDummy = new List<bool>();
     List<string> nodeTextDummy = new List<string>();
     Dictionary<int, HashSet<int>> nodesOptions = new Dictionary<int, HashSet<int>>();
+    Dictionary<int, Dictionary<int, bool>> nodesOptionsFoldouts = new Dictionary<int, Dictionary<int, bool>>();
 
     //List<Rect> optionWindows = new List<Rect>();
     List<int> nodeToOptionToAttach = new List<int>();
@@ -43,20 +44,7 @@ public class NodeEditor : EditorWindow {
         NodeEditor editor = EditorWindow.GetWindow<NodeEditor>();
         editor.wantsMouseMove = true;        
         //InitStyles();
-    }    
-
-    private static Texture2D MakeTex(int width, int height, Color col)
-    {
-        Color[] pix = new Color[width * height];
-        for (int i = 0; i < pix.Length; ++i)
-        {
-            pix[i] = col;
-        }
-        Texture2D result = new Texture2D(width, height);
-        result.SetPixels(pix);
-        result.Apply();
-        return result;
-    }
+    }        
 
     void OnGUI()
     {
@@ -81,15 +69,8 @@ public class NodeEditor : EditorWindow {
         */              
 
         GUILayout.BeginArea(new Rect(5, 30, position.width - 10, position.height - 35 - 20), config.EditorAreaBackgroundStyle);
-        {
-            if (!config.ConfigurationOpened)
-            {
-                DrawEditorArea();
-            }
-            else
-            {
-                DrawConfigurationMenu();                
-            }
+        {            
+            DrawEditorArea();
         }
         GUILayout.EndArea();                                     
     }
@@ -118,7 +99,7 @@ public class NodeEditor : EditorWindow {
             repaint = true;            
         }
         else
-        {
+        {            
             if (nodeToNodeToAttach.Count == 2)
             {
                 if (!nodeToNodeAttached.ContainsKey(nodeToNodeToAttach[0]))
@@ -156,11 +137,13 @@ public class NodeEditor : EditorWindow {
                 if (!nodesOptions.ContainsKey(nodeToOptionToAttach[0]))
                 {
                     nodesOptions.Add(nodeToOptionToAttach[0], new HashSet<int>());
+                    nodesOptionsFoldouts.Add(nodeToOptionToAttach[0], new Dictionary<int, bool>());
                 }
 
                 if (!nodesOptions[nodeToOptionToAttach[0]].Contains(nodeToOptionToAttach[1]))
                 {
                     nodesOptions[nodeToOptionToAttach[0]].Add(nodeToOptionToAttach[1]);
+                    nodesOptionsFoldouts[nodeToOptionToAttach[0]].Add(nodeToOptionToAttach[1], false);
                 }
 
                 nodeToOptionToAttach.Clear();
@@ -246,8 +229,8 @@ public class NodeEditor : EditorWindow {
 
         for (int i = 0; i < windows.Count; i++)
         {
-            border.Encapsulate(scale * windows[i].max);
-            border.Encapsulate(scale * windows[i].min);
+            border.Encapsulate(windows[i].max);
+            border.Encapsulate(windows[i].min);
         }
 
         scrollPosition =
@@ -261,16 +244,18 @@ public class NodeEditor : EditorWindow {
 
             BeginWindows();
             {
-                GUIUtility.ScaleAroundPivot(Vector2.one * scale, scrollPosition + position.size / 2);
-
-                UpdateCurves();
+                GUIUtility.ScaleAroundPivot(Vector2.one * scale, scrollPosition + position.size / 2);                
 
                 for (int i = 0; i < windows.Count; i++)
                 {
                     bool isNode = windowTypes[i] == NodeType.Node;
 
+                    Rect tempRect = windows[i];
+                    tempRect.height = 1;
+                    windows[i] = tempRect;
+
                     if (isNode)
-                    {
+                    {                        
                         windows[i] =
                             GUILayout.Window(i, windows[i], DrawNodeWindow, "Node " + nodeTypesIDs[i]);
                     }
@@ -281,6 +266,7 @@ public class NodeEditor : EditorWindow {
                     }
                 }
 
+                UpdateCurves();
                 //GUI.DragWindow();
 
             }
@@ -288,16 +274,7 @@ public class NodeEditor : EditorWindow {
             EndWindows();
         }
         EditorGUILayout.EndScrollView();
-    }
-
-    void DrawConfigurationMenu()
-    {
-        BeginWindows();
-        {            
-            config.RectHandle = GUILayout.Window(0, config.RectHandle, config.DrawMenu, "Configuration");
-        }
-        EndWindows();
-    }
+    }    
 
     void DrawDebug()
     {
@@ -329,7 +306,7 @@ public class NodeEditor : EditorWindow {
     {
         GUILayout.BeginHorizontal();
         {
-            if (GUILayout.Button("Create Node"))
+            if (GUILayout.Button("Create Dialogue Node"))
             {
                 windows.Add(new Rect(10 + scrollPosition.x, 10 + scrollPosition.y, 200, 5));
                 windowTypes.Add(NodeType.Node);
@@ -341,7 +318,7 @@ public class NodeEditor : EditorWindow {
                 WriteDebug("Adding node");
             }
 
-            if (GUILayout.Button("Create Option"))
+            if (GUILayout.Button("Create Dialogue Option"))
             {
                 windows.Add(new Rect(10 + scrollPosition.x, 10 + scrollPosition.y, 200, 5));
                 windowTypes.Add(NodeType.Option);
@@ -359,9 +336,11 @@ public class NodeEditor : EditorWindow {
             }
 
             if (GUILayout.Button("Configure"))
-            {                
-                config.ConfigurationOpened = true;
-                config.RectHandle.center = scrollPosition + config.RectHandle.size / 2 + new Vector2(20,20);
+            {
+                //config.ConfigurationOpened = true;
+                //config.RectHandle.center = scrollPosition + config.RectHandle.size / 2 + new Vector2(20,20);
+
+                ConfigurationWindow.ShowConfigMenu(config, this.Repaint);
             }
         }
         GUILayout.EndHorizontal();
@@ -415,14 +394,16 @@ public class NodeEditor : EditorWindow {
     void DrawOptionWindow(int id)
     {
         int typeid = nodeTypesIDs[id];
-
+        
         //GUILayout.Label("Option " + id);
 
-        if(nodeToOptionToAttach.Count == 1)
+        if(nodeToOptionToAttach.Count == 1 && (!nodesOptions.ContainsKey(nodeToOptionToAttach[0]) || !nodesOptions[nodeToOptionToAttach[0]].Contains(typeid) ) )
         {
             if(GUILayout.Button("Connect"))
             {
                 nodeToOptionToAttach.Add(typeid);
+                if(nodeToNodeToAttach.Count > 0) immidiateNodeDummy[nodeToNodeToAttach[0]] = false;
+                nodeToNodeToAttach.Clear();
             }
         }
 
@@ -488,7 +469,7 @@ public class NodeEditor : EditorWindow {
         optionTextDummy[typeid] =
             EditorGUILayout.TextArea(optionTextDummy[typeid],
                 config.TextAreaStyle,
-                GUILayout.ExpandHeight(true), GUILayout.MinHeight(50),
+                GUILayout.ExpandHeight(true), GUILayout.MinHeight(config.MinTextAreaHeight), GUILayout.MaxHeight(config.MaxTextAreaHeight),
                 GUILayout.ExpandWidth(false), GUILayout.Width(windows[id].width - 10)
                 );
 
@@ -501,105 +482,107 @@ public class NodeEditor : EditorWindow {
     {
         int typeid = nodeTypesIDs[id];
 
-        #region Connect To Option Handling
+        #region Connecting Buttons
 
-        if(optionToNodeToAttach.Count > 0 && !optionToNodeAttached.ContainsKey(optionToNodeToAttach[0]) )
+        if (optionToNodeToAttach.Count == 0)
         {
-            if(GUILayout.Button("Connect"))
+            if (nodeToNodeToAttach.Count == 0 && nodeToOptionToAttach.Count == 0)
             {
-                optionToNodeToAttach.Add(typeid);
-            }
-        }
-        else
-        #endregion
-
-        #region Immidiate Node Handling          
-        if (!immidiateNodeDummy[typeid] || !nodeToNodeAttached.ContainsKey(typeid))
-        {
-            if (nodeToNodeToAttach.Count != 1)
-            {
-                if (GUILayout.Button("Make Immidiate Node"))
+                if (!nodeToNodeAttached.ContainsKey(typeid))
                 {
-                    nodeToNodeToAttach.Add(typeid);
-                    optionToNodeToAttach.Clear();
-                    nodeToOptionToAttach.Clear();
-                    immidiateNodeDummy[typeid] = true;
+                    if (GUILayout.Button("Connect Node"))
+                    {
+                        if (!nodesOptions.ContainsKey(typeid) || nodesOptions[typeid].Count == 0)
+                        {
+                            nodeToNodeToAttach.Add(typeid);
+                            immidiateNodeDummy[typeid] = true;
+                        }
+                        nodeToOptionToAttach.Add(typeid);
+                    }
+                }
+                else
+                {
+                    GUIHelpers.GUIHorizontal(
+                        delegate ()
+                        {
+                            GUILayout.Label("Next Node:");
 
-                    //nodesOptions.Remove(typeid);
+                            int nxt = nodeToNodeAttached[typeid];
+                            bool nextIsExit = nxt == Dialogue.ExitDialogue;
+                            string nextString = (nextIsExit) ? "[EXIT]" : nxt.ToString();
+
+                            GUILayout.Label(nextString);
+
+                            if (!nextIsExit)
+                            {
+                                Rect focus = windows[nodesIndexes[nxt]];
+                                DrawJumpToButton("Go To", focus, GUILayout.Width(50));
+                            }
+
+                            if (GUILayout.Button("Clear"))
+                            {
+                                nodeToNodeAttached.Remove(typeid);
+                            }
+                        }
+                        );
                 }
             }
             else
             {
-                if (!nodeToNodeToAttach.Contains(typeid))
+                if (nodeToNodeToAttach.Count == 1)
                 {
-                    if (GUILayout.Button("Connect"))
+                    if (nodeToNodeToAttach[0] != typeid && 
+                        (!nodeToNodeAttached.ContainsKey(typeid) || nodeToNodeAttached[typeid] != nodeToNodeToAttach[0] ))
                     {
-                        nodeToNodeToAttach.Add(typeid);
-                        nodesOptions.Remove(nodeToNodeToAttach[0]);
+                        if (GUILayout.Button("Connect As Immediate Node"))
+                        {
+                            nodeToNodeToAttach.Add(typeid);
+                            nodeToOptionToAttach.Clear();
+                        }
+                    }
+                    else
+                    {
+                        GUIHelpers.GUIHorizontal(
+                            delegate ()
+                            {
+                                if (GUILayout.Button("Cancel Connection"))
+                                {
+                                    nodeToNodeToAttach.Clear();
+                                    nodeToOptionToAttach.Clear();
+                                    immidiateNodeDummy[typeid] = false;
+                                }
+
+                                if (GUILayout.Button("Exits Dialogue"))
+                                {
+                                    nodeToNodeToAttach.Add(-1);
+                                    nodeToOptionToAttach.Clear();
+                                }
+                            }
+                            );
                     }
                 }
                 else
                 {
-                    GUILayout.BeginHorizontal();
+                    if(GUILayout.Button("Cancel Connection"))
                     {
-                        if (GUILayout.Button("Cancel Connection"))
-                        {
-                            nodeToNodeToAttach.Clear();
-                        }
-
-                        if (GUILayout.Button("Exits Dialogue"))
-                        {
-                            nodeToNodeToAttach.Add(-1);
-                        }
+                        nodeToNodeToAttach.Clear();
+                        nodeToOptionToAttach.Clear();
                     }
-                    GUILayout.EndHorizontal();
                 }
             }
         }
         else
         {
-            if (nodeToNodeToAttach.Count == 1 && !nodeToNodeToAttach.Contains(typeid))
+            if(optionToNodeToAttach.Count == 1)
             {
-                if (GUILayout.Button("Connect"))
+                if(GUILayout.Button("Make Option's Target"))
                 {
-                    nodeToNodeToAttach.Add(typeid);
-                    nodesOptions.Remove(nodeToNodeToAttach[0]);
+                    optionToNodeToAttach.Add(typeid);
                 }
             }
-
-            GUILayout.BeginHorizontal();
-            {
-                int nxt = nodeToNodeAttached[typeid];
-                GUILayout.Label("Next Node: ", GUILayout.Width(80));
-
-                bool tempCont = nodeToNodeAttached.ContainsKey(typeid);
-                string destination =
-                    (tempCont) ?
-                        nodeToNodeAttached[typeid].ToString() :
-                        "[EXIT]";
-                if (tempCont)
-                {
-                    Rect focus = windows[nodesIndexes[nxt]];
-                    DrawJumpToButton(destination, focus, GUILayout.Width(50));
-                }
-                else
-                {
-                    GUILayout.Label(destination, GUILayout.Width(50));
-                }
-
-                if (GUILayout.Button("Clear"))
-                {
-                    WriteDebug("WARNING: Removing previously set immidiate node connection.");
-
-                    nodeToNodeAttached.Remove(typeid);
-                    nodeToNodeToAttach.Remove(typeid);
-                    immidiateNodeDummy[typeid] = false;
-                }
-            }
-            GUILayout.EndHorizontal();        
         }
         #endregion
-
+        
         if (GUILayout.Button("Delete"))
         {
             DeleteNodeWindow(id, typeid);
@@ -610,7 +593,7 @@ public class NodeEditor : EditorWindow {
             EditorGUILayout.TextArea(
                 nodeTextDummy[typeid],
                 config.TextAreaStyle,
-                GUILayout.ExpandHeight(true), GUILayout.MinHeight(50),
+                GUILayout.ExpandHeight(true), GUILayout.MinHeight(config.MinTextAreaHeight), GUILayout.MaxHeight(config.MaxTextAreaHeight),
                 GUILayout.ExpandWidth(false), GUILayout.Width(windows[id].width - 10)
                 );
 
@@ -618,14 +601,6 @@ public class NodeEditor : EditorWindow {
 
         if(!immidiateNodeDummy[typeid])
         {
-            if(GUILayout.Button("Append Option"))
-            {
-                nodeToOptionToAttach.Add(typeid);
-                if (nodeToNodeToAttach.Count == 1) immidiateNodeDummy[nodeToNodeToAttach[0]] = false;
-                nodeToNodeToAttach.Clear();
-                optionToNodeToAttach.Clear();
-            }
-
             if (nodesOptions.ContainsKey(typeid))
             {
                 int[] keys = new int[nodesOptions[typeid].Count];
@@ -633,40 +608,70 @@ public class NodeEditor : EditorWindow {
 
                 foreach (int optionIndex in keys)
                 {
-                    GUILayout.BeginHorizontal();
-                    {
-                        string label = "Option: " + optionIndex + ", ";
-                        Rect focus = windows[optionsIndexes[optionIndex]];
+                    nodesOptionsFoldouts[typeid][optionIndex] =
+                        EditorGUILayout.Foldout(
+                            nodesOptionsFoldouts[typeid][optionIndex],
+                            "Option: " + optionIndex, true
+                            );
 
-                        DrawJumpToButton(label, focus);
+                    if (nodesOptionsFoldouts[typeid][optionIndex])
+                    {                                                                        
+                        Rect foldoutRect = EditorGUILayout.BeginHorizontal(config.FoldoutInteriorStyle);
+                        {                                                                                                           
+                            GUILayout.BeginVertical();
+                            {
+                                GUILayout.BeginHorizontal();
+                                {                                    
+                                    GUILayout.Label("Option: ", GUILayout.Width(75));
+                                    GUILayout.Label(optionIndex.ToString());
+                                    GUILayout.FlexibleSpace();
+                                    DrawJumpToButton("Go To", windows[optionsIndexes[optionIndex]], GUILayout.Width(50));
+                                }
+                                GUILayout.EndHorizontal();
 
-                        //GUILayout.Label(label);
+                                GUILayout.BeginHorizontal();
+                                {                                    
+                                    GUILayout.Label("Destination: ", GUILayout.Width(75));
+                                    if (optionToNodeAttached.ContainsKey(optionIndex))
+                                    {
+                                        int to = optionToNodeAttached[optionIndex];                                        
+                                        GUILayout.Label(optionToNodeAttached[optionIndex].ToString());
+                                        GUILayout.FlexibleSpace();
+                                        DrawJumpToButton("Go To", windows[nodesIndexes[to]], GUILayout.Width(50));
+                                    }
+                                    else
+                                    {
+                                        GUILayout.Label("[EXIT]");
+                                        GUILayout.FlexibleSpace();
+                                    }
+                                }
+                                GUILayout.EndHorizontal();
 
-                        label =
-                            "Dest.: " +
-                                ((optionToNodeAttached.ContainsKey(optionIndex)) ?
-                                    optionToNodeAttached[optionIndex].ToString() :
-                                    "[EXIT]");
+                                GUILayout.BeginHorizontal();
+                                {
+                                    GUILayout.Label("Text: ", GUILayout.Width(75));
+                                    StringBuilder textToShow = new StringBuilder(optionTextDummy[optionIndex]);
 
-                        bool tempCont = optionToNodeAttached.ContainsKey(optionIndex);
+                                    if (textToShow.Length > config.MaxQuotasLength)
+                                    {
+                                        textToShow.Length = config.MaxQuotasLength - 3;
+                                        textToShow.Append("...");
+                                    }
 
-                        if (tempCont)
-                        {
-                            focus = windows[nodesIndexes[optionToNodeAttached[optionIndex]]];
-                            DrawJumpToButton(label, focus);
+                                    GUILayout.Label("\"" + textToShow + "\"", config.WrappedLabelStyle);                                    
+                                }
+                                GUILayout.EndHorizontal();
+                            }
+                            GUILayout.EndVertical();
+
+                            if (GUILayout.Button("x", GUILayout.Width(20)))
+                            {
+                                nodesOptions[typeid].Remove(optionIndex);
+                                nodesOptionsFoldouts[typeid].Remove(optionIndex);
+                            }                            
                         }
-                        else
-                        {
-                            GUILayout.Label(label);
-                        }
-
-                        if (GUILayout.Button("x", GUILayout.Width(20)))
-                        {
-                            //TODO: ZMIENIĆ PĘTLĘ - JEŚLI TUTAJ USUNĘ TO BĘDZIE SIĘ SYPAĆ
-                            nodesOptions[typeid].Remove(optionIndex);
-                        }
-                    }
-                    GUILayout.EndHorizontal();
+                        GUILayout.EndHorizontal();                        
+                    }                    
                 }
             }
         }
@@ -709,10 +714,12 @@ public class NodeEditor : EditorWindow {
         immidiateNodeDummy.RemoveAt(idOfType);
         nodeTextDummy.RemoveAt(idOfType);
         nodesOptions.Remove(idOfType);
+        nodesOptionsFoldouts.Remove(idOfType);
 
         nodeToOptionToAttach.Clear();
         optionToNodeToAttach.Clear();
-        nodesOptions.Remove(idOfType);        
+        nodesOptions.Remove(idOfType);
+        nodesOptionsFoldouts.Remove(idOfType);
 
         for(int i = 0; i < nodeTypesIDs.Count; i++)
         {
@@ -757,8 +764,11 @@ public class NodeEditor : EditorWindow {
             if(key > idOfType)
             {
                 nodesOptions.Remove(key);
+                Dictionary<int, bool> tempVal = nodesOptionsFoldouts[key];
+                nodesOptionsFoldouts.Remove(key);
                 key--;
                 nodesOptions.Add(key, value);
+                nodesOptionsFoldouts.Add(key, tempVal);
             }
         }
 
@@ -916,251 +926,226 @@ public class NodeEditor : EditorWindow {
         {
             selectedDebugMessage = debugMessages.Count - 1;
         }
-    }
+    }    
+}
 
-    private class EditorConfigurationData
-    {
-        public bool ConfigurationOpened;
+public class EditorConfigurationData
+{
+    public bool ConfigurationOpened;
 
-        public bool DiagonalStartPoints = false;
-        public bool DiagonalEndPoints = false;
+    public bool DiagonalStartPoints = false;
+    public bool DiagonalEndPoints = false;
 
-        public Color ImmidiateNodeConnection;
-        public Color NodeToOptionConnection;
-        public Color OptionToNodeConnection;
-        public Color AreaBackgroundColor;
+    public int MaxQuotasLength = 49;
+    public int MaxTextAreaHeight = 150;
+    public int MinTextAreaHeight = 50;
 
-        public GUIStyle BoundingBoxStyle = null;
-        public GUIStyle EditorAreaBackgroundStyle = null;
-        public GUIStyle TextAreaStyle = null;
+    public Color ImmidiateNodeConnection;
+    public Color NodeToOptionConnection;
+    public Color OptionToNodeConnection;
+    public Color AreaBackgroundColor;
 
-        public Rect RectHandle;
+    public GUIStyle BoundingBoxStyle = null;
+    public GUIStyle EditorAreaBackgroundStyle = null;
+    public GUIStyle TextAreaStyle = null;
+    public GUIStyle FoldoutInteriorStyle = null;
+    public GUIStyle WrappedLabelStyle = null;
 
-        private EditorConfigurationData Defaults;
-        private bool Connections = false;
-        private bool Backgrounds = false;
+    public Rect RectHandle;
 
-        private string[] preferencesKeys =
-            new string[]
-            {
+    private EditorConfigurationData Defaults;
+    //private bool Connections = false;
+    //private bool Backgrounds = false;
+
+    private string[] preferencesKeys =
+        new string[]
+        {
                 "NODE EDITOR: immidiateConnection",
                 "NODE EDITOR: nodeToOption",
                 "NODE EDITOR: optionToNode",
                 "NODE EDITOR: editorBackground",
                 "NODE EDITOR: diagonalStart",
                 "NODE EDITOR: diagonalEnd"
-            };
+        };
 
-        public EditorConfigurationData()
-        {            
-            Defaults = new EditorConfigurationData(false);
+    public string[] PreferencesKeys { get { return preferencesKeys; } }
 
-            if (!PreferencesExist())
-            {
-                RestoreDefaults();
-            }
-            else
-            {
-                RestorePreferences();
-            }
+    public EditorConfigurationData()
+    {
+        Defaults = new EditorConfigurationData(false);
 
-            RectHandle = new Rect(20 * Vector2.one, new Vector2(250, 30));
-        }
-
-        public void RestoreDefaults()
+        if (!PreferencesExist())
         {
-            if(Defaults != null)
-            {
-                ImmidiateNodeConnection = Defaults.ImmidiateNodeConnection;
-                NodeToOptionConnection = Defaults.NodeToOptionConnection;
-                OptionToNodeConnection = Defaults.OptionToNodeConnection;
-                AreaBackgroundColor = Defaults.AreaBackgroundColor;
-                DiagonalEndPoints = false;
-                DiagonalStartPoints = false;
-
-                InitStyles(true);
-            }
+            RestoreDefaults();
         }
-
-        public void DrawMenu(int id)
-        {            
-            Connections = EditorGUILayout.Foldout(Connections, "Connections: ");
-
-            if(Connections)
-            {
-                DrawColorChanger("Immidiate Node Connection: ", ref ImmidiateNodeConnection);
-                EditorPrefs.SetString(preferencesKeys[0], ColorToString(ImmidiateNodeConnection));
-
-                DrawColorChanger("Node To Option Connection: ", ref NodeToOptionConnection);
-                EditorPrefs.SetString(preferencesKeys[1], ColorToString(NodeToOptionConnection));
-
-                DrawColorChanger("Option To Node Connection: ", ref OptionToNodeConnection);
-                EditorPrefs.SetString(preferencesKeys[2], ColorToString(OptionToNodeConnection));
-
-                GUILayout.BeginHorizontal();
-                GUILayout.Label("Diagonal Start Points: ", GUILayout.Width(175));
-                DiagonalStartPoints = EditorGUILayout.Toggle(DiagonalStartPoints);
-                EditorPrefs.SetBool(preferencesKeys[4], DiagonalStartPoints);
-                GUILayout.EndHorizontal();
-
-                GUILayout.BeginHorizontal();
-                GUILayout.Label("Diagonal End Points: ", GUILayout.Width(175));
-                DiagonalEndPoints = EditorGUILayout.Toggle(DiagonalEndPoints);
-                EditorPrefs.SetBool(preferencesKeys[5], DiagonalEndPoints);
-                GUILayout.EndHorizontal();
-            }
-
-            Backgrounds = EditorGUILayout.Foldout(Backgrounds, "Backgrounds: ");
-
-            if(Backgrounds)
-            { 
-                DrawColorChanger("Editor Background: ", ref AreaBackgroundColor);
-                EditorPrefs.SetString(preferencesKeys[3], ColorToString(AreaBackgroundColor));
-                InitStyles(true);
-            }
-
-            GUILayout.BeginHorizontal(GUILayout.ExpandHeight(true));
-            {
-                if(GUILayout.Button("Close"))
-                {
-                    ConfigurationOpened = false;                    
-                }
-
-                if(GUILayout.Button("Restore"))
-                {
-                    RestoreDefaults();
-                }
-            }
-            GUILayout.EndHorizontal();            
-            GUI.DragWindow();
-        }
-
-        private bool PreferencesExist()
+        else
         {
-            bool result = true;
-
-            foreach(string key in preferencesKeys)
-            {
-                result &= EditorPrefs.HasKey(key);
-            }
-
-            return result;
+            RestorePreferences();
         }
 
-        private void RestorePreferences()
+        RectHandle = new Rect(20 * Vector2.one, new Vector2(250, 30));
+    }
+
+    public void RestoreDefaults()
+    {
+        if (Defaults != null)
         {
-            if(!TryParseFromString(EditorPrefs.GetString(preferencesKeys[0]), out ImmidiateNodeConnection  ))
-            {
-                Debug.Log("Wtf");
-            }
-
-            if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[1]), out NodeToOptionConnection))
-            {
-                Debug.Log("Wtf");
-            }
-
-            if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[2]), out OptionToNodeConnection))
-            {
-                Debug.Log("Wtf");
-            }
-
-            if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[3]), out AreaBackgroundColor))
-            {
-                Debug.Log("Wtf");
-            }
-
-
-            DiagonalStartPoints = EditorPrefs.GetBool(preferencesKeys[4], false);
-            DiagonalEndPoints = EditorPrefs.GetBool(preferencesKeys[5], false);
+            ImmidiateNodeConnection = Defaults.ImmidiateNodeConnection;
+            NodeToOptionConnection = Defaults.NodeToOptionConnection;
+            OptionToNodeConnection = Defaults.OptionToNodeConnection;
+            AreaBackgroundColor = Defaults.AreaBackgroundColor;
+            DiagonalEndPoints = false;
+            DiagonalStartPoints = false;
 
             InitStyles(true);
         }
+    }    
 
-        private string ColorToString(Color color)
+    public bool PreferencesExist()
+    {
+        bool result = true;
+
+        foreach (string key in preferencesKeys)
         {
-            StringBuilder sb = new StringBuilder();
-
-            sb.Append(color.r);
-            sb.Append("#");
-            sb.Append(color.g);
-            sb.Append("#");
-            sb.Append(color.b);
-            sb.Append("#");
-            sb.Append(color.a);
-
-            return sb.ToString();            
+            result &= EditorPrefs.HasKey(key);
         }
 
-        private bool TryParseFromString(string colorText, out Color col)
+        return result;
+    }
+
+    public void RestorePreferences()
+    {
+        if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[0]), out ImmidiateNodeConnection))
         {
-            string[] seperated = colorText.Split(new char[] { '#' }, System.StringSplitOptions.RemoveEmptyEntries);
+            Debug.Log("Wtf");
+        }
 
-            float red = -1;
-            float green = -1;
-            float blue = -1;
-            float alpha = -1;
+        if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[1]), out NodeToOptionConnection))
+        {
+            Debug.Log("Wtf");
+        }
 
-            bool success = true;
+        if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[2]), out OptionToNodeConnection))
+        {
+            Debug.Log("Wtf");
+        }
 
-            if((success = float.TryParse(seperated[0], out red) ))
+        if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[3]), out AreaBackgroundColor))
+        {
+            Debug.Log("Wtf");
+        }
+
+
+        DiagonalStartPoints = EditorPrefs.GetBool(preferencesKeys[4], false);
+        DiagonalEndPoints = EditorPrefs.GetBool(preferencesKeys[5], false);
+
+        InitStyles(true);
+    }
+
+    public static string ColorToString(Color color)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.Append(color.r);
+        sb.Append("#");
+        sb.Append(color.g);
+        sb.Append("#");
+        sb.Append(color.b);
+        sb.Append("#");
+        sb.Append(color.a);
+
+        return sb.ToString();
+    }
+
+    public static bool TryParseFromString(string colorText, out Color col)
+    {
+        string[] seperated = colorText.Split(new char[] { '#' }, System.StringSplitOptions.RemoveEmptyEntries);
+
+        float red = -1;
+        float green = -1;
+        float blue = -1;
+        float alpha = -1;
+
+        bool success = true;
+
+        if ((success = float.TryParse(seperated[0], out red)))
+        {
+            if (success && (success = float.TryParse(seperated[1], out green)))
             {
-                if(success && ( success = float.TryParse(seperated[1], out green) ))
+                if (success && (success = float.TryParse(seperated[2], out blue)))
                 {
-                    if (success && (success = float.TryParse(seperated[2], out blue)))
+                    if (success && (success = float.TryParse(seperated[3], out alpha)))
                     {
-                        if (success && (success = float.TryParse(seperated[3], out alpha)))
-                        {
 
-                        }
                     }
                 }
             }
-
-            col = (success)? new Color(red, green, blue, alpha) : new Color();            
-
-            return success;
         }
 
-        private void DrawColorChanger(string labelText, ref Color color)
+        col = (success) ? new Color(red, green, blue, alpha) : new Color();
+
+        return success;
+    }    
+
+    public void InitStyles(bool forced = false)
+    {
+        if (forced || BoundingBoxStyle == null)
         {
-            GUILayout.BeginHorizontal(GUILayout.ExpandHeight(true));
-            {
-                GUILayout.Label(labelText, GUILayout.Width(175));
-                color = EditorGUILayout.ColorField(color, GUILayout.Width(50));
-            }
-            GUILayout.EndHorizontal();
+            BoundingBoxStyle = new GUIStyle();
+            BoundingBoxStyle.normal.background = MakeTex(1, 1, new Color(0, 0, 0, 0));
         }
 
-        private void InitStyles(bool forced = false)
+        if (forced || EditorAreaBackgroundStyle == null)
         {
-            if (forced || BoundingBoxStyle == null)
-            {
-                BoundingBoxStyle = new GUIStyle();
-                BoundingBoxStyle.normal.background = MakeTex(1, 1, new Color(0, 0, 0, 0));
-            }
-
-            if (forced || EditorAreaBackgroundStyle == null)
-            {
-                EditorAreaBackgroundStyle = new GUIStyle();
-                EditorAreaBackgroundStyle.normal.background = MakeTex(1, 1, AreaBackgroundColor);
-            }
-
-            if (forced || TextAreaStyle == null)
-            {
-                TextAreaStyle = new GUIStyle(GUI.skin.textArea);
-                TextAreaStyle.wordWrap = true;
-                //textAreaStyle.fixedWidth = 200;           
-            }
+            EditorAreaBackgroundStyle = new GUIStyle();
+            EditorAreaBackgroundStyle.normal.background = MakeTex(1, 1, AreaBackgroundColor);
         }
 
-        private EditorConfigurationData(bool dummy)
+        if (forced || TextAreaStyle == null)
         {
-            ConfigurationOpened = dummy;
-
-            ImmidiateNodeConnection = Color.red;
-            NodeToOptionConnection = Color.black;
-            OptionToNodeConnection = Color.blue;
-            AreaBackgroundColor = new Color(0, 0.5f, 0, 0.4f);
+            TextAreaStyle = new GUIStyle(GUI.skin.textArea);
+            TextAreaStyle.wordWrap = true;
+            //textAreaStyle.fixedWidth = 200;           
         }
+
+        if(forced || FoldoutInteriorStyle == null)
+        {
+            FoldoutInteriorStyle = new GUIStyle();
+            FoldoutInteriorStyle.margin = new RectOffset(20, 5, 0, 0);
+            FoldoutInteriorStyle.clipping = TextClipping.Clip;
+            FoldoutInteriorStyle.stretchWidth = false;           
+        }
+
+        if(forced || WrappedLabelStyle == null)
+        {
+            WrappedLabelStyle = new GUIStyle();
+            WrappedLabelStyle.wordWrap = true;
+            WrappedLabelStyle.clipping = TextClipping.Clip;
+            WrappedLabelStyle.fontStyle = FontStyle.Italic;
+            WrappedLabelStyle.stretchWidth = false;            
+        }
+    }
+
+    private static Texture2D MakeTex(int width, int height, Color col)
+    {
+        Color[] pix = new Color[width * height];
+        for (int i = 0; i < pix.Length; ++i)
+        {
+            pix[i] = col;
+        }
+        Texture2D result = new Texture2D(width, height);
+        result.SetPixels(pix);
+        result.Apply();
+        return result;
+    }
+
+    private EditorConfigurationData(bool dummy)
+    {
+        ConfigurationOpened = dummy;
+
+        ImmidiateNodeConnection = Color.red;
+        NodeToOptionConnection = Color.black;
+        OptionToNodeConnection = Color.blue;
+        AreaBackgroundColor = new Color(0, 0.5f, 0, 0.4f);
     }
 }
