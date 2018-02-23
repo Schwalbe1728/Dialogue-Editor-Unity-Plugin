@@ -4,28 +4,19 @@ using UnityEngine;
 using UnityEditor;
 using System.Text;
 
-public class NodeEditor : EditorWindow {
-
+public class NodeEditor : EditorWindow
+{
     Dialogue EditedDialogue;
+    DialogueEditorInfo EditorInfo;
     List<DialogueNode> CurrentNodes;
     List<DialogueOption> CurrentOptions;
 
-    List<Rect> windows = new List<Rect>();
-    List<NodeType> windowTypes = new List<NodeType>();
-    List<int> nodeTypesIDs = new List<int>();
-    List<int> optionsIndexes = new List<int>();
-    List<int> nodesIndexes = new List<int>();
-    int nodes = 0;
-    int options = 0;
-
-
-    List<int> nodeToNodeToAttach = new List<int>();
-    Dictionary<int, Dictionary<int, bool>> nodesOptionsFoldouts = new Dictionary<int, Dictionary<int, bool>>();
+    List<int> nodeToNodeToAttach = new List<int>();    
 
     List<int> nodeToOptionToAttach = new List<int>();
     List<int> optionToNodeToAttach = new List<int>();
 
-    Vector2 scrollPosition = Vector2.zero;    
+    Vector2 scrollPosition = Vector2.zero;  
 
     EditorConfigurationData config;
 
@@ -37,18 +28,49 @@ public class NodeEditor : EditorWindow {
     [MenuItem("Window/Node editor")]
     static void ShowEditor()
     {
-        NodeEditor editor = EditorWindow.GetWindow<NodeEditor>();
-        editor.wantsMouseMove = true;        
+        NodeEditor editor = EditorWindow.GetWindow<NodeEditor>(); 
+        editor.wantsMouseMove = true;
         //InitStyles();
+        Selection.selectionChanged -= editor.OnEditorSelectionChanged;
+        Selection.selectionChanged += editor.OnEditorSelectionChanged;
+
+        editor.OnEditorSelectionChanged();
     }        
 
-    void OnGUI()
+    void OnDestroy()
     {
-        if(EditedDialogue == null)
+        Selection.selectionChanged -= OnEditorSelectionChanged;
+    }
+
+    void OnEditorSelectionChanged()
+    {
+        //Debug.Log("ChangedSelection");
+
+        if (Selection.activeObject is Dialogue)
         {
-            //  WYŁĄCZNIE DO TESTÓW
-            EditedDialogue = new Dialogue();
-        }
+            EditedDialogue = Selection.activeObject as Dialogue;
+            EditorInfo = EditedDialogue.EditorInfo;
+
+            if (EditorInfo == null)
+            {
+                EditorInfo = new DialogueEditorInfo();
+            }
+            else 
+            {
+                EditorInfo.RestoreFoldouts(EditedDialogue.GetAllNodes());
+            }
+
+            Repaint();
+        }        
+    }
+
+    void OnGUI()
+    {               
+        if(EditedDialogue == null || EditorInfo == null)
+        {
+            GUILayout.Label("Please, select a Dialogue to edit!", EditorStyles.boldLabel);
+            return;
+        }        
 
         CurrentNodes = new List<DialogueNode>(EditedDialogue.GetAllNodes());
         CurrentOptions = new List<DialogueOption>(EditedDialogue.GetAllOptions());
@@ -80,7 +102,10 @@ public class NodeEditor : EditorWindow {
         GUILayout.EndArea();
 
         EditedDialogue.SetAllNodes(CurrentNodes);
-        EditedDialogue.SetAllOptions(CurrentOptions);                                    
+        EditedDialogue.SetAllOptions(CurrentOptions);
+        EditedDialogue.EditorInfo = EditorInfo;
+
+        EditorUtility.SetDirty(EditedDialogue); 
     }
 
     void UpdateCurves()
@@ -88,7 +113,7 @@ public class NodeEditor : EditorWindow {
         Event currentEvent = Event.current;
         Rect cursorRect = new Rect(currentEvent.mousePosition, new Vector2(5, 5));
 
-        foreach(Rect win in windows)
+        foreach(Rect win in EditorInfo.Windows)
         {
             if(win.Contains(currentEvent.mousePosition))
             {
@@ -101,9 +126,9 @@ public class NodeEditor : EditorWindow {
 
         if (nodeToNodeToAttach.Count == 1)
         {            
-            int from = nodesIndexes[nodeToNodeToAttach[0]];
+            int from = EditorInfo.NodesIndexes[nodeToNodeToAttach[0]];
 
-            DrawNodeCurve(windows[from], cursorRect, config.ImmidiateNodeConnection);
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.ImmidiateNodeConnection);
             repaint = true;            
         }
         else
@@ -127,9 +152,9 @@ public class NodeEditor : EditorWindow {
         
         if (nodeToOptionToAttach.Count == 1)
         {
-            int from = nodesIndexes[nodeToOptionToAttach[0]];
+            int from = EditorInfo.NodesIndexes[nodeToOptionToAttach[0]];
 
-            DrawNodeCurve(windows[from], cursorRect, config.NodeToOptionConnection);
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.NodeToOptionConnection);
             repaint = true;
         }
         else
@@ -139,9 +164,9 @@ public class NodeEditor : EditorWindow {
                 DialogueNode node = CurrentNodes[nodeToOptionToAttach[0]];
                 List<int> optionsAttachedToNode = new List<int>(node.OptionsAttached);
 
-                if(!nodesOptionsFoldouts.ContainsKey(node.NodeID))
+                if(!EditorInfo.NodesOptionsFoldouts.ContainsKey(node.NodeID))
                 {
-                    nodesOptionsFoldouts.Add(node.NodeID, new Dictionary<int, bool>());
+                    EditorInfo.NodesOptionsFoldouts.Add(node.NodeID, new Dictionary<int, bool>());
                 }
 
                 if(!optionsAttachedToNode.Contains(nodeToOptionToAttach[1]))
@@ -149,7 +174,7 @@ public class NodeEditor : EditorWindow {
                     optionsAttachedToNode.Add(nodeToOptionToAttach[1]);
                     node.OptionsAttached = optionsAttachedToNode.ToArray();
 
-                    nodesOptionsFoldouts[node.NodeID].Add(nodeToOptionToAttach[1], false);
+                    EditorInfo.NodesOptionsFoldouts[node.NodeID].Add(nodeToOptionToAttach[1], false);
                 }
 
                 nodeToOptionToAttach.Clear();
@@ -158,9 +183,9 @@ public class NodeEditor : EditorWindow {
 
         if (optionToNodeToAttach.Count == 1)
         {
-            int from = optionsIndexes[optionToNodeToAttach[0]];
+            int from = EditorInfo.OptionsIndexes[optionToNodeToAttach[0]];
 
-            DrawNodeCurve(windows[from], cursorRect, config.OptionToNodeConnection);
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.OptionToNodeConnection);
             repaint = true;
         }
         else
@@ -184,7 +209,7 @@ public class NodeEditor : EditorWindow {
 
         foreach(DialogueNode nodeFrom in CurrentNodes)
         {
-            int from = nodesIndexes[nodeFrom.NodeID];
+            int from = EditorInfo.NodesIndexes[nodeFrom.NodeID];
 
             if(nodeFrom.ImmediateNode)
             {
@@ -196,30 +221,30 @@ public class NodeEditor : EditorWindow {
                 if (targID == Dialogue.ExitDialogue) continue;
                 if(targType == NodeType.Node)
                 {
-                    int to = nodesIndexes[targID];
+                    int to = EditorInfo.NodesIndexes[targID];
 
-                    DrawNodeCurve(windows[from], windows[to], config.ImmidiateNodeConnection);
+                    DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.ImmidiateNodeConnection);
                 }
             }
             else
             {                
                 foreach(int optInd in nodeFrom.OptionsAttached)
                 {
-                    int to = optionsIndexes[optInd];
+                    int to = EditorInfo.OptionsIndexes[optInd];
 
-                    DrawNodeCurve(windows[from], windows[to], config.NodeToOptionConnection);
+                    DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.NodeToOptionConnection);
                 }
             }
         }
 
         foreach(DialogueOption optionFrom in CurrentOptions)
         {
-            int from = optionsIndexes[optionFrom.OptionID];
+            int from = EditorInfo.OptionsIndexes[optionFrom.OptionID];
                         
             if(optionFrom.NextType == NodeType.Node)
             {
-                int to = nodesIndexes[optionFrom.NextID];
-                DrawNodeCurve(windows[from], windows[to], config.OptionToNodeConnection);
+                int to = EditorInfo.NodesIndexes[optionFrom.NextID];
+                DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.OptionToNodeConnection);
             }
         }
 
@@ -253,10 +278,10 @@ public class NodeEditor : EditorWindow {
     {
         Bounds border = new Bounds();
 
-        for (int i = 0; i < windows.Count; i++)
+        for (int i = 0; i < EditorInfo.Windows.Count; i++)
         {
-            border.Encapsulate(windows[i].max);
-            border.Encapsulate(windows[i].min);
+            border.Encapsulate(EditorInfo.Windows[i].max);
+            border.Encapsulate(EditorInfo.Windows[i].min);
         }
 
         scrollPosition =
@@ -272,19 +297,19 @@ public class NodeEditor : EditorWindow {
             {
                 GUIUtility.ScaleAroundPivot(Vector2.one * scale, scrollPosition + position.size / 2);                
 
-                for (int i = 0; i < windows.Count; i++)
+                for (int i = 0; i < EditorInfo.Windows.Count; i++)
                 {
-                    bool isNode = windowTypes[i] == NodeType.Node;
+                    bool isNode = EditorInfo.WindowTypes[i] == NodeType.Node;
 
                     if (isNode)
                     {                        
-                        windows[i] =
-                            GUILayout.Window(i, windows[i], DrawNodeWindow, CurrentNodes[nodeTypesIDs[i]].CustomID);
+                        EditorInfo.Windows[i] =
+                            GUILayout.Window(i, EditorInfo.Windows[i], DrawNodeWindow, CurrentNodes[EditorInfo.NodeTypesIDs[i]].CustomID);
                     }
                     else
                     {
-                        windows[i] =
-                            GUILayout.Window(i, windows[i], DrawOptionWindow, "Option " + nodeTypesIDs[i]);
+                        EditorInfo.Windows[i] =
+                            GUILayout.Window(i, EditorInfo.Windows[i], DrawOptionWindow, "Option " + EditorInfo.NodeTypesIDs[i]);
                     }
                 }
 
@@ -329,13 +354,13 @@ public class NodeEditor : EditorWindow {
             if (GUILayout.Button("Create Dialogue Node"))
             {
                 DialogueNode newNode = new DialogueNode();
-                newNode.NodeID = nodes;
+                newNode.NodeID = EditorInfo.Nodes;
                 CurrentNodes.Add(newNode);
 
-                windows.Add(new Rect(10 + scrollPosition.x, 10 + scrollPosition.y, 200, 5));
-                windowTypes.Add(NodeType.Node);
-                nodeTypesIDs.Add(nodes++);
-                nodesIndexes.Add(windows.Count - 1);                
+                EditorInfo.Windows.Add(new Rect(10 + scrollPosition.x, 10 + scrollPosition.y, 200, 5));
+                EditorInfo.WindowTypes.Add(NodeType.Node);
+                EditorInfo.NodeTypesIDs.Add(EditorInfo.Nodes++);
+                EditorInfo.NodesIndexes.Add(EditorInfo.Windows.Count - 1);                
                                 
                 WriteDebug("Adding node");
             }
@@ -343,13 +368,13 @@ public class NodeEditor : EditorWindow {
             if (GUILayout.Button("Create Dialogue Option"))
             {
                 DialogueOption newOption = new DialogueOption();
-                newOption.OptionID = options;
+                newOption.OptionID = EditorInfo.Options;
                 CurrentOptions.Add(newOption);
 
-                windows.Add(new Rect(10 + scrollPosition.x, 10 + scrollPosition.y, 200, 5));
-                windowTypes.Add(NodeType.Option);
-                nodeTypesIDs.Add(options++);
-                optionsIndexes.Add(windows.Count - 1);
+                EditorInfo.Windows.Add(new Rect(10 + scrollPosition.x, 10 + scrollPosition.y, 200, 5));
+                EditorInfo.WindowTypes.Add(NodeType.Option);
+                EditorInfo.NodeTypesIDs.Add(EditorInfo.Options++);
+                EditorInfo.OptionsIndexes.Add(EditorInfo.Windows.Count - 1);
 
                 WriteDebug("Adding option");
             }
@@ -375,17 +400,17 @@ public class NodeEditor : EditorWindow {
         GUILayout.Label("Width: ", GUILayout.Width(100));
         if (GUILayout.Button("+"))
         {
-            Rect temp = windows[id];
+            Rect temp = EditorInfo.Windows[id];
 
             temp.size += new Vector2(10, 0);
-            windows[id] = temp;
+            EditorInfo.Windows[id] = temp;
         }
         if (GUILayout.Button("-"))
         {
-            Rect temp = windows[id];
+            Rect temp = EditorInfo.Windows[id];
 
             temp.size += new Vector2(-10, 0);
-            windows[id] = temp;
+            EditorInfo.Windows[id] = temp;
         }              
 
         GUILayout.EndHorizontal();
@@ -396,25 +421,25 @@ public class NodeEditor : EditorWindow {
 
         if (GUILayout.Button("+"))
         {
-            Rect temp = windows[id];
+            Rect temp = EditorInfo.Windows[id];
 
             temp.size += new Vector2(0, 10);
-            windows[id] = temp;
+            EditorInfo.Windows[id] = temp;
         }
 
         if (GUILayout.Button("-"))
         {
-            Rect temp = windows[id];
+            Rect temp = EditorInfo.Windows[id];
 
             temp.size += new Vector2(0, -10);
-            windows[id] = temp;
+            EditorInfo.Windows[id] = temp;
         }
         GUILayout.EndHorizontal();
     }
 
     void DrawOptionWindow(int id)
     {
-        int typeid = nodeTypesIDs[id];
+        int typeid = EditorInfo.NodeTypesIDs[id];
         DialogueOption currentOption = CurrentOptions[typeid];
 
         if (nodeToOptionToAttach.Count == 1)
@@ -444,7 +469,7 @@ public class NodeEditor : EditorWindow {
                     "[EXIT]";
             if (tempCont)
             {
-                Rect focus = windows[nodesIndexes[currentOption.NextID]];
+                Rect focus = EditorInfo.Windows[EditorInfo.NodesIndexes[currentOption.NextID]];
                 DrawJumpToButton(destination, focus, GUILayout.Width(50));
             }
             else
@@ -495,7 +520,7 @@ public class NodeEditor : EditorWindow {
             EditorGUILayout.TextArea(currentOption.OptionText,
                 config.TextAreaStyle,
                 GUILayout.ExpandHeight(true), GUILayout.MinHeight(config.MinTextAreaHeight), GUILayout.MaxHeight(config.MaxTextAreaHeight),
-                GUILayout.ExpandWidth(false), GUILayout.Width(windows[id].width - 10)
+                GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 10)
                 );
 
         DrawResizeButtons(id);
@@ -505,7 +530,7 @@ public class NodeEditor : EditorWindow {
 
     void DrawNodeWindow(int id)
     {
-        int typeid = nodeTypesIDs[id];
+        int typeid = EditorInfo.NodeTypesIDs[id];
         DialogueNode currentNode = CurrentNodes[typeid];
 
         #region Connecting Buttons
@@ -542,7 +567,7 @@ public class NodeEditor : EditorWindow {
 
                             if (!nextIsExit)
                             {
-                                Rect focus = windows[nodesIndexes[nxt]];
+                                Rect focus = EditorInfo.Windows[EditorInfo.NodesIndexes[nxt]];
                                 DrawJumpToButton("Go To", focus, GUILayout.Width(50));
                             }
 
@@ -625,22 +650,27 @@ public class NodeEditor : EditorWindow {
                 currentNode.Text,
                 config.TextAreaStyle,
                 GUILayout.ExpandHeight(true), GUILayout.MinHeight(config.MinTextAreaHeight), GUILayout.MaxHeight(config.MaxTextAreaHeight),
-                GUILayout.ExpandWidth(false), GUILayout.Width(windows[id].width - 10)
+                GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 10)
                 );
 
         #region Opcje Dialogowe
 
         if (!currentNode.ImmediateNode)
-        {
+        {   
+            if(!EditorInfo.NodesOptionsFoldouts.ContainsKey(typeid))
+            {
+                EditorInfo.RestoreFoldouts(CurrentNodes.ToArray());
+            }
+                    
             foreach (int optionIndex in currentNode.OptionsAttached)
             {
-                nodesOptionsFoldouts[typeid][optionIndex] =
+                EditorInfo.NodesOptionsFoldouts[typeid][optionIndex] =
                     EditorGUILayout.Foldout(
-                        nodesOptionsFoldouts[typeid][optionIndex],
+                        EditorInfo.NodesOptionsFoldouts[typeid][optionIndex],
                         "Option: " + optionIndex, true
                         );
 
-                if (nodesOptionsFoldouts[typeid][optionIndex])
+                if (EditorInfo.NodesOptionsFoldouts[typeid][optionIndex])
                 {
                     Rect foldoutRect = EditorGUILayout.BeginHorizontal(config.FoldoutInteriorStyle);
                     {
@@ -653,7 +683,7 @@ public class NodeEditor : EditorWindow {
                                 GUILayout.Label("Option: ", GUILayout.Width(75));
                                 GUILayout.Label(optionIndex.ToString());
                                 GUILayout.FlexibleSpace();
-                                DrawJumpToButton("Go To", windows[optionsIndexes[optionIndex]], GUILayout.Width(50));
+                                DrawJumpToButton("Go To", EditorInfo.Windows[EditorInfo.OptionsIndexes[optionIndex]], GUILayout.Width(50));
                             }
                             GUILayout.EndHorizontal();                            
 
@@ -665,7 +695,7 @@ public class NodeEditor : EditorWindow {
                                     int to = currentOption.NextID; //optionToNodeAttached[optionIndex];
                                     GUILayout.Label(to.ToString());
                                     GUILayout.FlexibleSpace();
-                                    DrawJumpToButton("Go To", windows[nodesIndexes[to]], GUILayout.Width(50));
+                                    DrawJumpToButton("Go To", EditorInfo.Windows[EditorInfo.NodesIndexes[to]], GUILayout.Width(50));
                                 }
                                 else
                                 {
@@ -700,7 +730,7 @@ public class NodeEditor : EditorWindow {
                             optionsAttachedWithout.Remove(optionIndex);
                             currentNode.OptionsAttached = optionsAttachedWithout.ToArray();
 
-                            nodesOptionsFoldouts[typeid].Remove(optionIndex);
+                            EditorInfo.NodesOptionsFoldouts[typeid].Remove(optionIndex);
                         }
                     }
                     GUILayout.EndHorizontal();
@@ -734,37 +764,37 @@ public class NodeEditor : EditorWindow {
 
     void DeleteNodeWindow(int id, int idOfType)
     {
-        windows.RemoveAt(id);
+        EditorInfo.Windows.RemoveAt(id);
 
-        windowTypes.RemoveAt(id);
-        nodeTypesIDs.RemoveAt(id);
-        nodesIndexes.RemoveAt(idOfType);
-        nodes--;
+        EditorInfo.WindowTypes.RemoveAt(id);
+        EditorInfo.NodeTypesIDs.RemoveAt(id);
+        EditorInfo.NodesIndexes.RemoveAt(idOfType);
+        EditorInfo.Nodes--;
 
         CurrentNodes.RemoveAt(idOfType);
         nodeToNodeToAttach.Clear();
-        nodesOptionsFoldouts.Remove(idOfType);
+        EditorInfo.NodesOptionsFoldouts.Remove(idOfType);
 
         nodeToOptionToAttach.Clear();
         optionToNodeToAttach.Clear();
-        nodesOptionsFoldouts.Remove(idOfType);
+        EditorInfo.NodesOptionsFoldouts.Remove(idOfType);
 
-        for(int i = 0; i < nodeTypesIDs.Count; i++)
+        for(int i = 0; i < EditorInfo.NodeTypesIDs.Count; i++)
         {
-            if(windowTypes[i] == NodeType.Node && nodeTypesIDs[i] > idOfType)
+            if(EditorInfo.WindowTypes[i] == NodeType.Node && EditorInfo.NodeTypesIDs[i] > idOfType)
             {
-                nodeTypesIDs[i]--;
+                EditorInfo.NodeTypesIDs[i]--;
             }
         }
 
-        for(int i = idOfType; i < nodesIndexes.Count; i++)
+        for(int i = idOfType; i < EditorInfo.NodesIndexes.Count; i++)
         {
-            nodesIndexes[i]--;
+            EditorInfo.NodesIndexes[i]--;
         }
 
-        for(int i = optionsIndexes.FindIndex(x => x > id); i < optionsIndexes.Count && i >= 0; i++)
+        for(int i = EditorInfo.OptionsIndexes.FindIndex(x => x > id); i < EditorInfo.OptionsIndexes.Count && i >= 0; i++)
         {
-            optionsIndexes[i]--;
+            EditorInfo.OptionsIndexes[i]--;
         }
         
         foreach(DialogueNode dialNode in CurrentNodes)
@@ -796,18 +826,18 @@ public class NodeEditor : EditorWindow {
             }
         }
 
-        int[] keys = new int[nodesOptionsFoldouts.Count];
-        nodesOptionsFoldouts.Keys.CopyTo(keys, 0);
+        int[] keys = new int[EditorInfo.NodesOptionsFoldouts.Count];
+        EditorInfo.NodesOptionsFoldouts.Keys.CopyTo(keys, 0);
         for(int i = 0; i < keys.Length; i++)
         {
             int key = keys[i];
-            Dictionary<int, bool> tempVal = nodesOptionsFoldouts[key];
+            Dictionary<int, bool> tempVal = EditorInfo.NodesOptionsFoldouts[key];
 
             if (key > idOfType)
             {              
-                nodesOptionsFoldouts.Remove(key);
+                EditorInfo.NodesOptionsFoldouts.Remove(key);
                 key--;
-                nodesOptionsFoldouts.Add(key, tempVal);
+                EditorInfo.NodesOptionsFoldouts.Add(key, tempVal);
             }
         }
 
