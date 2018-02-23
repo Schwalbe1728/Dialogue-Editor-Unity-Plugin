@@ -9,13 +9,18 @@ public class Dialogue : ScriptableObject
 
     public string Name { get { return this.name; } }
 
-    private int startNodeID = 0;
+    [SerializeField]
+    private int startNodeID = 0;    
     private int currentNodeID;
 
+    [SerializeField]
     private List<DialogueOption> Options;
+    [SerializeField]
     private List<DialogueNode> Nodes;
+    [SerializeField]
     private List<ConditionNode> Conditions;
 
+    [SerializeField]
     private DialogueEditorInfo editorInfo;
     
     public DialogueEditorInfo EditorInfo { get { return editorInfo; } set { editorInfo = value; } }
@@ -79,6 +84,8 @@ public class Dialogue : ScriptableObject
 
     public void SetAllNodes(List<DialogueNode> nods)
     {
+        if(nods.Count == 0) Debug.Log("nods == 0!!!");
+
         Nodes = nods;
     }
 
@@ -244,14 +251,21 @@ public class DialogueEditorInfo
 [System.Serializable]
 public class DialogueNode
 {
+    [SerializeField]
     private int nodeID;
+    [SerializeField]
     private bool isImmediateNode;
+    [SerializeField]
     private int nextID = Dialogue.ExitDialogue;
+    [SerializeField]
     private NodeType nextType = NodeType.Exit;
 
+    [SerializeField]
     private string nodeText;
+    [SerializeField]
     private string customID;
 
+    [SerializeField]
     private List<int> optionsIndexesList;
 
     public int NodeID { get { return nodeID; } set { if (value >= 0) nodeID = value; } }    
@@ -260,7 +274,7 @@ public class DialogueNode
     {
         get
         {
-            return (customID != null) ? 
+            return (customID != null && !customID.Equals("")) ? 
                 customID : 
                 "Node " + nodeID.ToString();
         }
@@ -341,11 +355,16 @@ public class DialogueNode
 [System.Serializable]
 public class DialogueOption
 {
+    [SerializeField]
     private int optionID;
+    [SerializeField]
     private int nextID = Dialogue.ExitDialogue;
+    [SerializeField]
     private NodeType nextType = NodeType.Exit;
 
+    [SerializeField]
     private bool alreadyVisited = false;
+    [SerializeField]
     private ConditionNode entryCondition;
 
     public int OptionID { get { return optionID; } set { if (value >= 0) optionID = value; } }

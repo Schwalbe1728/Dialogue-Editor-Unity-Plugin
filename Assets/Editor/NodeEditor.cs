@@ -39,7 +39,8 @@ public class NodeEditor : EditorWindow
 
     void OnDestroy()
     {
-        Selection.selectionChanged -= OnEditorSelectionChanged;
+        SaveChanges("Node Editor On Destroy");
+        Selection.selectionChanged -= OnEditorSelectionChanged;        
     }
 
     void OnEditorSelectionChanged()
@@ -99,13 +100,27 @@ public class NodeEditor : EditorWindow
         {            
             DrawEditorArea();
         }
-        GUILayout.EndArea();
+        GUILayout.EndArea();        
 
-        EditedDialogue.SetAllNodes(CurrentNodes);
-        EditedDialogue.SetAllOptions(CurrentOptions);
-        EditedDialogue.EditorInfo = EditorInfo;
+        //EditorUtility.SetDirty(EditedDialogue);
+        //AssetDatabase.SaveAssets();      
+        //SaveChanges("NodeEditor.OnGUI");
+    }
 
-        EditorUtility.SetDirty(EditedDialogue); 
+    void SaveChanges(string undoTitle)
+    {
+        if (EditedDialogue != null)
+        {
+            Undo.RecordObject(EditedDialogue, undoTitle);
+
+            EditedDialogue.SetAllNodes(CurrentNodes);
+            EditedDialogue.SetAllOptions(CurrentOptions);
+            EditedDialogue.EditorInfo = EditorInfo;
+
+            EditorUtility.SetDirty(EditedDialogue);
+            //AssetDatabase.SaveAssets();
+            //Debug.Log("Saving changes");
+        }
     }
 
     void UpdateCurves()
@@ -122,14 +137,14 @@ public class NodeEditor : EditorWindow
         }
 
         bool repaint = false;
-
+        bool save = false;
 
         if (nodeToNodeToAttach.Count == 1)
         {            
             int from = EditorInfo.NodesIndexes[nodeToNodeToAttach[0]];
 
             DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.ImmidiateNodeConnection);
-            repaint = true;            
+            repaint = true;                       
         }
         else
         {            
@@ -147,6 +162,7 @@ public class NodeEditor : EditorWindow
                 }
 
                 nodeToNodeToAttach.Clear();
+                save = true;
             }
         }
         
@@ -178,6 +194,7 @@ public class NodeEditor : EditorWindow
                 }
 
                 nodeToOptionToAttach.Clear();
+                save = true;
             }
         }
 
@@ -204,6 +221,7 @@ public class NodeEditor : EditorWindow
                 }
 
                 optionToNodeToAttach.Clear();
+                save = true;
             }
         }
 
@@ -251,6 +269,11 @@ public class NodeEditor : EditorWindow
         if(repaint)
         {
             Repaint();
+        }
+
+        if(save)
+        {
+            SaveChanges("Update Curves");
         }
     }
 
@@ -363,6 +386,8 @@ public class NodeEditor : EditorWindow
                 EditorInfo.NodesIndexes.Add(EditorInfo.Windows.Count - 1);                
                                 
                 WriteDebug("Adding node");
+
+                SaveChanges("Create Dialogue Node");
             }
 
             if (GUILayout.Button("Create Dialogue Option"))
@@ -377,6 +402,8 @@ public class NodeEditor : EditorWindow
                 EditorInfo.OptionsIndexes.Add(EditorInfo.Windows.Count - 1);
 
                 WriteDebug("Adding option");
+
+                SaveChanges("Create Dialogue Option");
             }
 
             if (GUILayout.Button("Sort"))
@@ -516,6 +543,9 @@ public class NodeEditor : EditorWindow
         }
         GUILayout.EndHorizontal();
 
+        bool save = false;
+        string prev = currentOption.OptionText;
+
         currentOption.OptionText =
             EditorGUILayout.TextArea(currentOption.OptionText,
                 config.TextAreaStyle,
@@ -523,15 +553,24 @@ public class NodeEditor : EditorWindow
                 GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 10)
                 );
 
-        DrawResizeButtons(id);
+        save = save || ( currentOption.OptionText != null && !currentOption.OptionText.Equals(prev));
 
+        DrawResizeButtons(id);
+        
         GUI.DragWindow();
+
+        if(save)
+        {
+            SaveChanges("Draw Option Window");
+        }
     }
 
     void DrawNodeWindow(int id)
     {
         int typeid = EditorInfo.NodeTypesIDs[id];
         DialogueNode currentNode = CurrentNodes[typeid];
+
+        bool save = false;
 
         #region Connecting Buttons
 
@@ -575,6 +614,7 @@ public class NodeEditor : EditorWindow
                             {
                                 //nodeToNodeAttached.Remove(typeid);
                                 currentNode.RevertToRegularNode();
+                                save = true;
                             }
                         }
                         );
@@ -642,8 +682,11 @@ public class NodeEditor : EditorWindow
         if (GUILayout.Button("Delete"))
         {
             DeleteNodeWindow(id, typeid);
+            SaveChanges("Delete Node");
             return;
-        }               
+        }
+
+        string prevText = currentNode.Text;        
 
         currentNode.Text =
             EditorGUILayout.TextArea(
@@ -652,6 +695,8 @@ public class NodeEditor : EditorWindow
                 GUILayout.ExpandHeight(true), GUILayout.MinHeight(config.MinTextAreaHeight), GUILayout.MaxHeight(config.MaxTextAreaHeight),
                 GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 10)
                 );
+
+        save = save || (currentNode.Text != null && !currentNode.Text.Equals(prevText));
 
         #region Opcje Dialogowe
 
@@ -731,6 +776,8 @@ public class NodeEditor : EditorWindow
                             currentNode.OptionsAttached = optionsAttachedWithout.ToArray();
 
                             EditorInfo.NodesOptionsFoldouts[typeid].Remove(optionIndex);
+
+                            save = true;
                         }
                     }
                     GUILayout.EndHorizontal();
@@ -742,7 +789,12 @@ public class NodeEditor : EditorWindow
         #endregion
 
         DrawResizeButtons(id);
-        GUI.DragWindow();       
+        GUI.DragWindow();
+
+        if (save)
+        {
+            SaveChanges("Draw Node Window");
+        }
     }
 
     void FocusOnRect(Rect rect)

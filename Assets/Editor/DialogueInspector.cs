@@ -24,20 +24,26 @@ namespace Assets.Editor
             }
             GUILayout.EndHorizontal();
 
-            GUILayout.BeginHorizontal();
+            if (selected.EditorInfo != null)
             {
-                GUILayout.Label("Nodes count (editor info):");
-                GUILayout.Label(selected.EditorInfo.Nodes.ToString());
-            }
-            GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                {
+                    GUILayout.Label("Nodes count (editor info):");
+                    GUILayout.Label(selected.EditorInfo.Nodes.ToString());
+                }
+                GUILayout.EndHorizontal();
 
-            GUILayout.BeginHorizontal();
+                GUILayout.BeginHorizontal();
+                {
+                    GUILayout.Label("NodesIndexes count (editor info):");
+                    GUILayout.Label(selected.EditorInfo.NodesIndexes.Count.ToString());
+                }
+                GUILayout.EndHorizontal();
+            }
+            else
             {
-                GUILayout.Label("NodesIndexes count (editor info):");
-                GUILayout.Label(selected.EditorInfo.NodesIndexes.Count.ToString());
+                GUILayout.Label("Doesnt record EditorInfo");
             }
-            GUILayout.EndHorizontal();
-
         }
     }
 }
