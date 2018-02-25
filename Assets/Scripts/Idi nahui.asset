@@ -11,3 +11,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8c6d9b6ebdbdde428ba67696bc5b967, type: 3}
   m_Name: Idi nahui
   m_EditorClassIdentifier: 
+  startNodeID: 0
+  Options:
+  - optionID: 0
+    nextID: 0
+    nextType: 1
+    alreadyVisited: 0
+    OptionText: Szmato
+    VisitOnce: 0
+  Nodes:
+  - nodeID: 0
+    isImmediateNode: 1
+    nextID: 1
+    nextType: 1
+    nodeText: Jeb
+    customID: 
+    optionsIndexesList: 
+  - nodeID: 1
+    isImmediateNode: 0
+    nextID: -1
+    nextType: 0
+    nodeText: Cyyyyka
+    customID: 
+    optionsIndexesList: 00000000
+  Conditions: []
+  editorInfo:
+    Windows:
+    - serializedVersion: 2
+      x: 53
+      y: 24
+      width: 226
+      height: 172
+    - serializedVersion: 2
+      x: 246
+      y: 239
+      width: 226
+      height: 190
+    - serializedVersion: 2
+      x: 412
+      y: 28
+      width: 200
+      height: 171
+    WindowTypes: 010000000100000002000000
+    NodeTypesIDs: 000000000100000000000000
+    OptionsIndexes: 02000000
+    NodesIndexes: 0000000001000000
+    Nodes: 2
+    Options: 1

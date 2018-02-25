@@ -117,7 +117,7 @@ public class NodeEditor : EditorWindow
     {
         if (EditedDialogue != null)
         {
-            Undo.RecordObject(EditedDialogue, undoTitle);
+            //Undo.RecordObject(EditedDialogue, undoTitle);
 
             EditedDialogue.SetAllNodes(CurrentNodes);
             EditedDialogue.SetAllOptions(CurrentOptions);
