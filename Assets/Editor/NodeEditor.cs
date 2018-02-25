@@ -16,11 +16,15 @@ public class NodeEditor : EditorWindow
     List<int> nodeToOptionToAttach = new List<int>();
     List<int> optionToNodeToAttach = new List<int>();
 
-    Vector2 scrollPosition = Vector2.zero;  
+    Vector2 scrollPosition = Vector2.zero;
 
     EditorConfigurationData config;
 
     private float scale = 1f;
+    private float DragAreaMargin = 8f;
+
+    private bool resizing = false;
+    private int windowResizedIndex = -1;
 
     List<string> debugMessages = new List<string>();
     int selectedDebugMessage = -1;
@@ -53,6 +57,8 @@ public class NodeEditor : EditorWindow
     {
         //Debug.Log("ChangedSelection");
 
+        resizing = false;
+
         if (Selection.activeObject is Dialogue)
         {
             EditedDialogue = Selection.activeObject as Dialogue;
@@ -72,7 +78,7 @@ public class NodeEditor : EditorWindow
     }
 
     void OnGUI()
-    {               
+    {        
         if(EditedDialogue == null || EditorInfo == null)
         {
             GUILayout.Label("Please, select a Dialogue to edit!", EditorStyles.boldLabel);
@@ -85,8 +91,8 @@ public class NodeEditor : EditorWindow
         if(config == null)
         {
             config = new EditorConfigurationData();
-        }
-                   
+        }               
+                  
         GUILayout.BeginArea(new Rect(5, 5, position.width-10, 20));
         {
             DrawEditorMenu();
@@ -106,11 +112,7 @@ public class NodeEditor : EditorWindow
         {            
             DrawEditorArea();
         }
-        GUILayout.EndArea();        
-
-        //EditorUtility.SetDirty(EditedDialogue);
-        //AssetDatabase.SaveAssets();      
-        //SaveChanges("NodeEditor.OnGUI");
+        GUILayout.EndArea();
     }
 
     void SaveChanges(string undoTitle)
@@ -427,47 +429,31 @@ public class NodeEditor : EditorWindow
 
     void DrawResizeButtons(int id)
     {
-        GUILayout.Space(15);
-        GUILayout.BeginHorizontal();
-
-        GUILayout.Label("Width: ", GUILayout.Width(100));
-        if (GUILayout.Button("+"))
+        if(resizing)
         {
-            Rect temp = EditorInfo.Windows[id];
+            if (windowResizedIndex == id)
+            {
+                if (Event.current.type == EventType.MouseDrag)
+                {
+                    Rect tempWindow = EditorInfo.Windows[id];
+                    tempWindow.size += Event.current.delta;
+                    EditorInfo.Windows[id] = tempWindow;
 
-            temp.size += new Vector2(10, 0);
-            EditorInfo.Windows[id] = temp;
+                    Repaint();
+                }
+
+                resizing = EditorGUILayout.ToggleLeft("Resize", resizing, GUILayout.Width(80));
+            }
         }
-        if (GUILayout.Button("-"))
+        else
         {
-            Rect temp = EditorInfo.Windows[id];
+            resizing = EditorGUILayout.ToggleLeft("Resize", resizing, GUILayout.Width(80));
 
-            temp.size += new Vector2(-10, 0);
-            EditorInfo.Windows[id] = temp;
-        }              
-
-        GUILayout.EndHorizontal();
-
-        GUILayout.BeginHorizontal();
-
-        GUILayout.Label("Height: ", GUILayout.Width(100));
-
-        if (GUILayout.Button("+"))
-        {
-            Rect temp = EditorInfo.Windows[id];
-
-            temp.size += new Vector2(0, 10);
-            EditorInfo.Windows[id] = temp;
+            if(resizing)
+            {
+                windowResizedIndex = id;
+            }
         }
-
-        if (GUILayout.Button("-"))
-        {
-            Rect temp = EditorInfo.Windows[id];
-
-            temp.size += new Vector2(0, -10);
-            EditorInfo.Windows[id] = temp;
-        }
-        GUILayout.EndHorizontal();
     }
 
     void DrawOptionWindow(int id)
@@ -493,8 +479,8 @@ public class NodeEditor : EditorWindow
 
         GUILayout.BeginHorizontal();
         {
-            GUILayout.Label("Next Node: ", GUILayout.Width(80));            
-
+            GUILayout.Label("Next Node: ");            
+            
             bool tempCont = currentOption.NextType != NodeType.Exit;
             string destination =
                 (tempCont) ?
@@ -502,8 +488,10 @@ public class NodeEditor : EditorWindow
                     "[EXIT]";
             if (tempCont)
             {
+                GUILayout.Label(destination);
+
                 Rect focus = EditorInfo.Windows[EditorInfo.NodesIndexes[currentOption.NextID]];
-                DrawJumpToButton(destination, focus, GUILayout.Width(50));
+                DrawJumpToButton("Go To", focus, GUILayout.Width(50));
             }
             else
             {
@@ -556,20 +544,24 @@ public class NodeEditor : EditorWindow
             EditorGUILayout.TextArea(currentOption.OptionText,
                 config.TextAreaStyle,
                 GUILayout.ExpandHeight(true), GUILayout.MinHeight(config.MinTextAreaHeight), GUILayout.MaxHeight(config.MaxTextAreaHeight),
-                GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 10)
+                GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 2 * DragAreaMargin)
                 );
 
         save = save || ( currentOption.OptionText != null && !currentOption.OptionText.Equals(prev));
 
         DrawResizeButtons(id);
-        
-        GUI.DragWindow();
+
+        if (!resizing)
+        {
+            Vector2 margin = new Vector2(DragAreaMargin, DragAreaMargin);
+            GUI.DragWindow(new Rect(margin, EditorInfo.Windows[id].size - 2 * margin));
+        }
 
         if(save)
         {
             SaveChanges("Draw Option Window");
         }
-    }
+    }    
 
     void DrawNodeWindow(int id)
     {
@@ -643,24 +635,26 @@ public class NodeEditor : EditorWindow
                         }
                     }
                     else
-                    {
-                        GUIHelpers.GUIHorizontal(
-                            delegate ()
-                            {
-                                if (GUILayout.Button("Cancel Connection"))
-                                {
-                                    nodeToNodeToAttach.Clear();
-                                    nodeToOptionToAttach.Clear();
-                                    //immidiateNodeDummy[typeid] = false;
-                                }
+                    {                        
+                        if (nodeToNodeToAttach[0] == typeid)
+                        {
+                            GUIHelpers.GUIHorizontal(
+                              delegate ()
+                              {
+                                  if (GUILayout.Button("Cancel Connection"))
+                                  {
+                                      nodeToNodeToAttach.Clear();
+                                      nodeToOptionToAttach.Clear();
+                                  }
 
-                                if (GUILayout.Button("Exits Dialogue"))
-                                {
-                                    nodeToNodeToAttach.Add(-1);
-                                    nodeToOptionToAttach.Clear();
-                                }
-                            }
-                            );
+                                  if (GUILayout.Button("Exits Dialogue"))
+                                  {
+                                      nodeToNodeToAttach.Add(-1);
+                                      nodeToOptionToAttach.Clear();
+                                  }
+                              }
+                              );
+                        }
                     }
                 }
                 else
@@ -685,13 +679,14 @@ public class NodeEditor : EditorWindow
         }
         #endregion
         
+        /*
         if (GUILayout.Button("Delete"))
         {
             DeleteNodeWindow(id, typeid);
             SaveChanges("Delete Node");
             return;
         }
-
+        */
         string prevText = currentNode.Text;        
 
         currentNode.Text =
@@ -699,7 +694,7 @@ public class NodeEditor : EditorWindow
                 currentNode.Text,
                 config.TextAreaStyle,
                 GUILayout.ExpandHeight(true), GUILayout.MinHeight(config.MinTextAreaHeight), GUILayout.MaxHeight(config.MaxTextAreaHeight),
-                GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 10)
+                GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 2 * DragAreaMargin)
                 );
 
         save = save || (currentNode.Text != null && !currentNode.Text.Equals(prevText));
@@ -790,18 +785,35 @@ public class NodeEditor : EditorWindow
                 }
             }
         }
-       
 
-        #endregion
 
-        DrawResizeButtons(id);
-        GUI.DragWindow();
+        #endregion        
+
+        GUILayout.Space(15);
+
+        GUILayout.BeginHorizontal();
+        {
+            DrawResizeButtons(id);            
+            if (GUILayout.Button("Delete", GUILayout.Width(80)))
+            {
+                DeleteNodeWindow(id, typeid);
+                SaveChanges("Delete Node");
+                return;
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        if (!resizing)
+        {
+            Vector2 margin = new Vector2(DragAreaMargin, DragAreaMargin);
+            GUI.DragWindow(new Rect(margin, EditorInfo.Windows[id].size - 2 * margin));
+        }
 
         if (save)
         {
             SaveChanges("Draw Node Window");
         }
-    }
+    }    
 
     void FocusOnRect(Rect rect)
     {

@@ -14,47 +14,82 @@ MonoBehaviour:
   startNodeID: 0
   Options:
   - optionID: 0
-    nextID: 0
+    nextID: 1
     nextType: 1
     alreadyVisited: 0
-    OptionText: Szmato
+    OptionText: Ugh
+    VisitOnce: 0
+  - optionID: 1
+    nextID: 3
+    nextType: 1
+    alreadyVisited: 0
+    OptionText: 
     VisitOnce: 0
   Nodes:
   - nodeID: 0
-    isImmediateNode: 1
-    nextID: 1
-    nextType: 1
-    nodeText: Jeb
-    customID: 
-    optionsIndexesList: 
-  - nodeID: 1
     isImmediateNode: 0
     nextID: -1
     nextType: 0
-    nodeText: Cyyyyka
+    nodeText: 
     customID: 
-    optionsIndexesList: 00000000
+    optionsIndexesList: 0000000001000000
+  - nodeID: 1
+    isImmediateNode: 1
+    nextID: 2
+    nextType: 1
+    nodeText: 
+    customID: 
+    optionsIndexesList: 
+  - nodeID: 2
+    isImmediateNode: 0
+    nextID: -1
+    nextType: 0
+    nodeText: 
+    customID: 
+    optionsIndexesList: 
+  - nodeID: 3
+    isImmediateNode: 1
+    nextID: 1
+    nextType: 1
+    nodeText: 
+    customID: 
+    optionsIndexesList: 
   Conditions: []
   editorInfo:
     Windows:
     - serializedVersion: 2
-      x: 53
-      y: 24
-      width: 226
-      height: 172
+      x: 203
+      y: 114
+      width: 198
+      height: 189
     - serializedVersion: 2
-      x: 246
-      y: 239
-      width: 226
-      height: 190
+      x: 756
+      y: 128
+      width: 202
+      height: 209
     - serializedVersion: 2
-      x: 412
-      y: 28
+      x: 461
+      y: 106
       width: 200
-      height: 171
-    WindowTypes: 010000000100000002000000
-    NodeTypesIDs: 000000000100000000000000
-    OptionsIndexes: 02000000
-    NodesIndexes: 0000000001000000
-    Nodes: 2
-    Options: 1
+      height: 231
+    - serializedVersion: 2
+      x: 154
+      y: 426
+      width: 226
+      height: 131
+    - serializedVersion: 2
+      x: 439
+      y: 520
+      width: 226
+      height: 132
+    - serializedVersion: 2
+      x: 788
+      y: 377
+      width: 226
+      height: 131
+    WindowTypes: 020000000200000001000000010000000100000001000000
+    NodeTypesIDs: 000000000100000000000000010000000200000003000000
+    OptionsIndexes: 0000000001000000
+    NodesIndexes: 02000000030000000400000005000000
+    Nodes: 4
+    Options: 2
