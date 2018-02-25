@@ -37,6 +37,12 @@ public class NodeEditor : EditorWindow
         editor.OnEditorSelectionChanged();
     }        
 
+    void OnFocus()
+    {
+        Selection.selectionChanged -= OnEditorSelectionChanged;
+        Selection.selectionChanged += OnEditorSelectionChanged;
+    }
+
     void OnDestroy()
     {
         SaveChanges("Node Editor On Destroy");
