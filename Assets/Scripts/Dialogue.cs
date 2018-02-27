@@ -366,6 +366,8 @@ public class DialogueOption
     private bool alreadyVisited = false;
     [SerializeField]
     private ConditionNode entryCondition;
+    [SerializeField]
+    private bool entryConditionSet = false;
 
     public int OptionID { get { return optionID; } set { if (value >= 0) optionID = value; } }
 
@@ -395,12 +397,16 @@ public class DialogueOption
         return OptionText;
     }
 
+    public ConditionNode EntryCondition { get { return entryCondition; } }
+    public bool EntryConditionSet { get { return entryConditionSet; } }
+
     public void SetEntryCondition(ConditionNode condition)
     {
         entryCondition = condition;
+        entryConditionSet = entryCondition != null;
     }
 
-    public void ClearEntryCondition() { entryCondition = null; }
+    public void ClearEntryCondition() { entryCondition = null; entryConditionSet = false; }
 
     public void SetNextNodeExit()
     {

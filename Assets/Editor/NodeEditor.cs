@@ -264,7 +264,7 @@ public class NodeEditor : EditorWindow
         }
 
         foreach(DialogueOption optionFrom in CurrentOptions)
-        {
+        {            
             int from = EditorInfo.OptionsIndexes[optionFrom.OptionID];
                         
             if(optionFrom.NextType == NodeType.Node)
@@ -460,7 +460,9 @@ public class NodeEditor : EditorWindow
     {
         int typeid = EditorInfo.NodeTypesIDs[id];
         DialogueOption currentOption = CurrentOptions[typeid];
+        //bool save = false;
 
+        #region Option's Target Setting
         if (nodeToOptionToAttach.Count == 1)
         {
             DialogueNode nodeAwaiting = CurrentNodes[nodeToOptionToAttach[0]];
@@ -536,10 +538,45 @@ public class NodeEditor : EditorWindow
             }
         }
         GUILayout.EndHorizontal();
+        #endregion
+        #region Visit Once
 
-        bool save = false;
+        currentOption.VisitOnce = EditorGUILayout.Toggle("Visit Once: ", currentOption.VisitOnce);
+
+        #endregion
+        #region Connect Entry Condition
+
+        GUILayout.BeginHorizontal();
+        {
+            GUILayout.Label("Entry Condition: ");
+
+            if(!currentOption.EntryConditionSet)
+            {
+                GUILayout.Label("[none]");
+
+                if(GUILayout.Button("Set"))
+                {
+
+                }
+            }
+            else
+            {
+                if(GUILayout.Button("Go To"))
+                {
+
+                }
+
+                if(GUILayout.Button("x"))
+                {
+                    currentOption.ClearEntryCondition();
+                }
+            }
+        }
+        GUILayout.EndHorizontal();
+        #endregion
+        #region Option Text        
         string prev = currentOption.OptionText;
-
+        
         currentOption.OptionText =
             EditorGUILayout.TextArea(currentOption.OptionText,
                 config.TextAreaStyle,
@@ -547,17 +584,29 @@ public class NodeEditor : EditorWindow
                 GUILayout.ExpandWidth(false), GUILayout.Width(EditorInfo.Windows[id].width - 2 * DragAreaMargin)
                 );
 
-        save = save || ( currentOption.OptionText != null && !currentOption.OptionText.Equals(prev));
+        //save = save || ( currentOption.OptionText != null && !currentOption.OptionText.Equals(prev));
+        #endregion
 
-        DrawResizeButtons(id);
+        GUILayout.BeginHorizontal();
+        {
+            DrawResizeButtons(id);
+
+            if(GUILayout.Button("Delete", GUILayout.Width(80)))
+            {
+                DeleteOptionWindow(id, typeid);
+                SaveChanges("Delete dialogue option");
+                return;
+            }
+        }
+        GUILayout.EndHorizontal();
 
         if (!resizing)
         {
             Vector2 margin = new Vector2(DragAreaMargin, DragAreaMargin);
-            GUI.DragWindow(new Rect(margin, EditorInfo.Windows[id].size - 2 * margin));
+            GUI.DragWindow(new Rect(Vector2.zero, EditorInfo.Windows[id].size - margin));
         }
 
-        if(save)
+        if(/*save*/ GUI.changed )
         {
             SaveChanges("Draw Option Window");
         }
@@ -702,14 +751,28 @@ public class NodeEditor : EditorWindow
         #region Opcje Dialogowe
 
         if (!currentNode.ImmediateNode)
-        {   
-            if(!EditorInfo.NodesOptionsFoldouts.ContainsKey(typeid))
+        {
+            bool restoreFoldout = !EditorInfo.NodesOptionsFoldouts.ContainsKey(typeid);
+
+            foreach(int optionIndex in currentNode.OptionsAttached)
             {
-                EditorInfo.RestoreFoldouts(CurrentNodes.ToArray());
-            }
+                if (restoreFoldout)
+                {
+                    EditorInfo.RestoreFoldouts(CurrentNodes.ToArray());
+                    break;
+                }
+
+                restoreFoldout |= !EditorInfo.NodesOptionsFoldouts[typeid].ContainsKey(optionIndex);
+            }                       
                     
             foreach (int optionIndex in currentNode.OptionsAttached)
             {
+                if(!EditorInfo.NodesOptionsFoldouts.ContainsKey(typeid) || !EditorInfo.NodesOptionsFoldouts[typeid].ContainsKey(optionIndex))
+                {
+                    Debug.Log( "Zawiera type id " + typeid + ": " + EditorInfo.NodesOptionsFoldouts.ContainsKey(typeid));
+                    Debug.Log("Zawiera option id " + optionIndex + ": " + EditorInfo.NodesOptionsFoldouts[typeid].ContainsKey(optionIndex));
+                }
+
                 EditorInfo.NodesOptionsFoldouts[typeid][optionIndex] =
                     EditorGUILayout.Foldout(
                         EditorInfo.NodesOptionsFoldouts[typeid][optionIndex],
@@ -806,7 +869,7 @@ public class NodeEditor : EditorWindow
         if (!resizing)
         {
             Vector2 margin = new Vector2(DragAreaMargin, DragAreaMargin);
-            GUI.DragWindow(new Rect(margin, EditorInfo.Windows[id].size - 2 * margin));
+            GUI.DragWindow(new Rect(Vector2.zero, EditorInfo.Windows[id].size - margin));
         }
 
         if (save)
@@ -832,6 +895,96 @@ public class NodeEditor : EditorWindow
         return result;
     }
 
+    void DeleteOptionWindow(int id, int idOfType)
+    {
+        EditorInfo.Windows.RemoveAt(id);
+        EditorInfo.WindowTypes.RemoveAt(id);
+        EditorInfo.NodeTypesIDs.RemoveAt(id);
+        EditorInfo.OptionsIndexes.RemoveAt(idOfType);
+        EditorInfo.Options--;
+
+        CurrentOptions.RemoveAt(idOfType);
+        nodeToNodeToAttach.Clear();
+        nodeToOptionToAttach.Clear();
+        optionToNodeToAttach.Clear();
+        
+        foreach(int nodeIndex in EditorInfo.NodesOptionsFoldouts.Keys)
+        {
+            if(EditorInfo.NodesOptionsFoldouts[nodeIndex].ContainsKey(idOfType))
+            {
+                EditorInfo.NodesOptionsFoldouts[nodeIndex].Remove(idOfType);
+            }
+        }
+
+        for (int i = 0; i < EditorInfo.NodeTypesIDs.Count; i++)
+        {
+            if (EditorInfo.WindowTypes[i] == NodeType.Option && EditorInfo.NodeTypesIDs[i] > idOfType)
+            {
+                EditorInfo.NodeTypesIDs[i]--;
+            }
+        }
+
+        for (int i = idOfType; i < EditorInfo.OptionsIndexes.Count; i++)
+        {
+            EditorInfo.OptionsIndexes[i]--;
+        }
+
+        for (int i = EditorInfo.NodesIndexes.FindIndex(x => x > id); i < EditorInfo.NodesIndexes.Count && i >= 0; i++)
+        {
+            EditorInfo.NodesIndexes[i]--;
+        }
+
+        foreach(DialogueOption opt in CurrentOptions)
+        {
+            if(opt.OptionID > idOfType)
+            {
+                opt.OptionID--;
+            }
+        }
+
+        foreach(DialogueNode dialNode in CurrentNodes)
+        {
+            if (!dialNode.ImmediateNode && dialNode.OptionsAttached != null)
+            {
+                List<int> optionsAttached = new List<int>(dialNode.OptionsAttached);
+                optionsAttached.Remove(idOfType);
+
+                for (int i = 0; i < optionsAttached.Count; i++)
+                {
+                    if (optionsAttached[i] > idOfType)
+                    {
+                        optionsAttached[i]--;
+                    }
+                }
+
+                dialNode.OptionsAttached = optionsAttached.ToArray();
+            }
+        }
+
+        int[] keys = new int[EditorInfo.NodesOptionsFoldouts.Count];
+        EditorInfo.NodesOptionsFoldouts.Keys.CopyTo(keys, 0);
+        for (int i = 0; i < keys.Length; i++)
+        {
+            int[] optionsKeys = new int[EditorInfo.NodesOptionsFoldouts[keys[i]].Count];
+            EditorInfo.NodesOptionsFoldouts[keys[i]].Keys.CopyTo(optionsKeys, 0);
+
+            for (int j = 0; j < optionsKeys.Length; j++)
+            {
+                int key = optionsKeys[j];
+
+                if (key > idOfType)
+                {
+                    bool value = EditorInfo.NodesOptionsFoldouts[keys[i]][key];
+                    EditorInfo.NodesOptionsFoldouts[keys[i]].Remove(key);
+                    key--;
+                    EditorInfo.NodesOptionsFoldouts[keys[i]].Add(key, value);
+                }
+            }
+        }
+
+        WriteDebug("Deleting option " + idOfType + " and it's associations.");
+    }
+
     void DeleteNodeWindow(int id, int idOfType)
     {
         EditorInfo.Windows.RemoveAt(id);
@@ -847,7 +1000,6 @@ public class NodeEditor : EditorWindow
 
         nodeToOptionToAttach.Clear();
         optionToNodeToAttach.Clear();
-        EditorInfo.NodesOptionsFoldouts.Remove(idOfType);
 
         for(int i = 0; i < EditorInfo.NodeTypesIDs.Count; i++)
         {
