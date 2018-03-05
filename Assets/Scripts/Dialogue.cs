@@ -7,6 +7,8 @@ public class Dialogue : ScriptableObject
 {
     public const int ExitDialogue = -1;
 
+    private static Dialogue currentDialogue;    
+
     public string Name { get { return this.name; } }
 
     [SerializeField]
@@ -109,10 +111,64 @@ public class Dialogue : ScriptableObject
         }
     }
     #endregion
+    #region Conditions
+    public ConditionNode[] GetAllConditions()
+    {
+        if (Conditions == null)
+        {
+            Conditions = new List<ConditionNode>();
+        }
+
+        return Conditions.ToArray();
+    }
+
+    public void SetAllConditions(ConditionNode[] conds)
+    {
+        SetAllConditions(new List<ConditionNode>(conds));
+    }
+
+    public void SetAllConditions(List<ConditionNode> conds)
+    {
+        Conditions = conds;
+    }
+    public ConditionNode GetCondition(int id)
+    {
+        return
+            (id >= 0 && id < Conditions.Count) ?
+                Conditions[id] : null;
+    }
+
+    public static bool ConditionChainTest(int id)
+    {
+        bool result;
+
+        do
+        {
+            result = currentDialogue.Conditions[id].ConditionChainElementTest(out id);
+        }
+        while (id != Dialogue.ExitDialogue);
+
+        return result;
+    }
+
+    public void DeleteCondition(int nr)
+    {
+        if (Conditions != null && Conditions.Count < nr && Conditions.Count >= 0)
+        {
+            Conditions.RemoveAt(nr);
+
+            for (int i = nr; i < Conditions.Count; i++)
+            {
+                Conditions[i].ConditionID = i;
+            }
+        }
+    }
+    #endregion
 
     public void StartDialogue()
     {
         currentNodeID = startNodeID;
+        currentDialogue = this;
     }
 
     public bool DialogueFinished { get { return currentNodeID == Dialogue.ExitDialogue; } }
@@ -212,8 +268,10 @@ public class DialogueEditorInfo
     public List<int> NodeTypesIDs;
     public List<int> OptionsIndexes;
     public List<int> NodesIndexes;
+    public List<int> ConditionsIndexes;
     public int Nodes;
     public int Options;
+    public int Conditions;
     public Dictionary<int, Dictionary<int, bool>> NodesOptionsFoldouts;
 
     public DialogueEditorInfo()
@@ -223,8 +281,10 @@ public class DialogueEditorInfo
         NodeTypesIDs = new List<int>();
         OptionsIndexes = new List<int>();
         NodesIndexes = new List<int>();
+        ConditionsIndexes = new List<int>();
         Nodes = 0;
         Options = 0;
+        Conditions = 0;
         NodesOptionsFoldouts = new Dictionary<int, Dictionary<int, bool>>();
     }
 
@@ -385,9 +445,10 @@ public class DialogueOption
     {
         get
         {
+            bool result = !EntryConditionSet || Dialogue.ConditionChainTest(entryCondition.ConditionID);            
+
             return
-                (!VisitOnce || !alreadyVisited) &&
-                (entryCondition == null || entryCondition.ConditionTest());
+                (!VisitOnce || !alreadyVisited) && result;
         }
     }
 
@@ -398,6 +459,7 @@ public class DialogueOption
     }
 
     public ConditionNode EntryCondition { get { return entryCondition; } }
+    
     public bool EntryConditionSet { get { return entryConditionSet; } }
 
     public void SetEntryCondition(ConditionNode condition)
@@ -425,21 +487,58 @@ public class DialogueOption
 }
 
 [System.Serializable]
-public class ConditionNode
+public abstract class ConditionNodeBase
 {
+    public virtual bool ConditionTest()
+    {
+        return true;
+    }
+}
+
+[System.Serializable]
+public partial class ConditionNode : ConditionNodeBase
+{   
+    [SerializeField]
     protected int conditionID;
 
+    [SerializeField]
     protected int targetIDIfPassed = Dialogue.ExitDialogue;
+    [SerializeField]
     protected NodeType targetTypeIfPassed = NodeType.Exit;
 
+    [SerializeField]
     protected int targetIDIfFailed = Dialogue.ExitDialogue;
+    [SerializeField]
     protected NodeType targetTypeIfFailed = NodeType.Exit;
 
     public int ConditionID { get { return conditionID; } set { if (value >= 0) conditionID = value; } }
 
-    public virtual bool ConditionTest()
+    public int SuccessTarget { get { return targetIDIfPassed; } }
+    public NodeType SuccessTargetType { get { return targetTypeIfPassed; } }
+
+    public int FailureTarget { get { return targetIDIfFailed; } }
+    public NodeType FailureTargetType { get { return targetTypeIfFailed; } }    
+
+    public bool ConditionChainElementTest(out int nextConditionID)
     {
-        return true;
+        NodeType targType;
+        bool result = ConditionTest(out nextConditionID, out targType);
+
+        if (targType == NodeType.Exit)
+        {
+
+        }
+        else
+        {
+            if (targType != NodeType.Condition)
+            {
+                throw new System.AccessViolationException("Illegal operation - only conditions are allowed");
+            }
+        }
+
+        Debug.Log(result + ", " + nextConditionID);
+
+        return result;
     }
 
     public bool ConditionTest(out int targetID, out NodeType targetType)
@@ -456,6 +555,18 @@ public class ConditionNode
 
         return result;
     }
+
+    public void SetSuccessTarget(int nID, NodeType nType)
+    {
+        targetIDIfPassed = nID;
+        targetTypeIfPassed = nType;
+    }
+
+    public void SetFailureTarget(int nID, NodeType nType)
+    {
+        targetIDIfFailed = nID;
+        targetTypeIfFailed = nType;
+    }
 }
 
 public enum NodeType
@@ -464,4 +575,28 @@ public enum NodeType
     Node,
     Option,
     Condition
+}
+
+public static class NodeTypeExtension
+{
+    public static string ToString(this NodeType type, bool dump)
+    {
+        switch(type)
+        {
+            case NodeType.Condition:
+                return "Condition";
+
+            case NodeType.Exit:
+                return "Exit";
+
+            case NodeType.Node:
+                return "Node";
+
+            case NodeType.Option:
+                return "Option";
+
+            default:
+                return null;
+        }
+    }
 }

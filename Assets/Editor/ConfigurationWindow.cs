@@ -104,6 +104,18 @@ public class ConfigurationWindow : EditorWindow
                 DrawColorChanger("Option To Node Connection: ", ref ConfigData.OptionToNodeConnection);
                 EditorPrefs.SetString(ConfigData.PreferencesKeys[2], EditorConfigurationData.ColorToString(ConfigData.OptionToNodeConnection));
 
+                DrawColorChanger("To Condition Connection: ", ref ConfigData.ToConditionConnection);
+                EditorPrefs.SetString(ConfigData.PreferencesKeys[6], EditorConfigurationData.ColorToString(ConfigData.ToConditionConnection));
+
+                DrawColorChanger("Condition Success Connection: ", ref ConfigData.FromSuccesConnection);
+                EditorPrefs.SetString(ConfigData.PreferencesKeys[7], EditorConfigurationData.ColorToString(ConfigData.FromSuccesConnection));
+
+                DrawColorChanger("Condition Failure Connection: ", ref ConfigData.FromFailureConnection);
+                EditorPrefs.SetString(ConfigData.PreferencesKeys[8], EditorConfigurationData.ColorToString(ConfigData.OptionToNodeConnection));
+
+                DrawColorChanger("Entry Condition Connection: ", ref ConfigData.EntryConditionConnection);
+                EditorPrefs.SetString(ConfigData.PreferencesKeys[9], EditorConfigurationData.ColorToString(ConfigData.EntryConditionConnection));
+
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("Diagonal Start Points: ", GUILayout.Width(DescriptionLabelWidth));
                 ConfigData.DiagonalStartPoints = EditorGUILayout.Toggle(ConfigData.DiagonalStartPoints);

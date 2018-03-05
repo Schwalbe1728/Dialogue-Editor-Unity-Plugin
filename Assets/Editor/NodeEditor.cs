@@ -10,11 +10,20 @@ public class NodeEditor : EditorWindow
     DialogueEditorInfo EditorInfo;
     List<DialogueNode> CurrentNodes;
     List<DialogueOption> CurrentOptions;
+    List<ConditionNode> CurrentConditions;
 
-    List<int> nodeToNodeToAttach = new List<int>();    
+    List<int> nodeToNodeToAttach = new List<int>();                 //Immediate node -> Dialogue Node
 
-    List<int> nodeToOptionToAttach = new List<int>();
-    List<int> optionToNodeToAttach = new List<int>();
+    List<int> nodeToOptionToAttach = new List<int>();               //Dialogue Node -> Option
+    List<int> optionToNodeToAttach = new List<int>();               //Option -> Dialogue Node
+
+    List<int> nodeToConditionToAttach = new List<int>();            //Immediate node -> Condition
+    List<int> optionToConditionToAttach = new List<int>();          //Option -> Condition
+    List<int> conditionSuccessToConditionToAttach = new List<int>();   //Condition -> [Condition Success] -> Condition
+    List<int> conditionSuccessToNodeToAttach = new List<int>();     //Condition -> [Condition Success] -> Node
+    List<int> conditionFailToConditionToAttach = new List<int>();   //Condition -> [Condition Failure] -> Condition
+    List<int> conditionFailToNodeToAttach = new List<int>();        //Condition -> [Condition Failure] -> Node
+    List<int> conditionToEntryOption = new List<int>();             //Condition -> Entry Condition value of Option    
 
     Vector2 scrollPosition = Vector2.zero;
 
@@ -87,6 +96,7 @@ public class NodeEditor : EditorWindow
 
         CurrentNodes = new List<DialogueNode>(EditedDialogue.GetAllNodes());
         CurrentOptions = new List<DialogueOption>(EditedDialogue.GetAllOptions());
+        CurrentConditions = new List<ConditionNode>(EditedDialogue.GetAllConditions());
 
         if(config == null)
         {
@@ -123,6 +133,7 @@ public class NodeEditor : EditorWindow
 
             EditedDialogue.SetAllNodes(CurrentNodes);
             EditedDialogue.SetAllOptions(CurrentOptions);
+            EditedDialogue.SetAllConditions(CurrentConditions);
             EditedDialogue.EditorInfo = EditorInfo;
 
             EditorUtility.SetDirty(EditedDialogue);
@@ -147,6 +158,7 @@ public class NodeEditor : EditorWindow
         bool repaint = false;
         bool save = false;
 
+        #region Immediate Node connections creation
         if (nodeToNodeToAttach.Count == 1)
         {            
             int from = EditorInfo.NodesIndexes[nodeToNodeToAttach[0]];
@@ -170,10 +182,13 @@ public class NodeEditor : EditorWindow
                 }
 
                 nodeToNodeToAttach.Clear();
+                nodeToConditionToAttach.Clear();
+                nodeToOptionToAttach.Clear();
                 save = true;
             }
         }
-        
+        #endregion
+        #region Node To Option Connections creation
         if (nodeToOptionToAttach.Count == 1)
         {
             int from = EditorInfo.NodesIndexes[nodeToOptionToAttach[0]];
@@ -205,7 +220,8 @@ public class NodeEditor : EditorWindow
                 save = true;
             }
         }
-
+        #endregion
+        #region Option To Node Connection creation
         if (optionToNodeToAttach.Count == 1)
         {
             int from = EditorInfo.OptionsIndexes[optionToNodeToAttach[0]];
@@ -232,8 +248,166 @@ public class NodeEditor : EditorWindow
                 save = true;
             }
         }
+        #endregion
+        
+        #region Conditions Connections
+        #region Immediate Node -> Condition
 
-        foreach(DialogueNode nodeFrom in CurrentNodes)
+        if(nodeToConditionToAttach.Count == 1)
+        {
+            int from = EditorInfo.NodesIndexes[nodeToConditionToAttach[0]];
+
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.ToConditionConnection);
+            repaint = true;
+        }
+        else
+        {
+            if(nodeToConditionToAttach.Count == 2)
+            {
+                DialogueNode nodeFrom = CurrentNodes[nodeToConditionToAttach[0]];
+                nodeFrom.MakeImmediateNode();
+                nodeFrom.SetImmediateNodeTarget(nodeToConditionToAttach[1], NodeType.Condition);
+
+                nodeToConditionToAttach.Clear();
+                nodeToNodeToAttach.Clear();
+                nodeToOptionToAttach.Clear();
+            }
+        }
+
+        #region Option -> Condtion
+        if(optionToConditionToAttach.Count == 1)
+        {
+            int from = EditorInfo.OptionsIndexes[optionToConditionToAttach[0]];
+
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.ToConditionConnection);
+            repaint = true;
+        }
+        else
+        {
+            if(optionToConditionToAttach.Count == 2)
+            {
+                DialogueOption optionFrom = CurrentOptions[optionToConditionToAttach[0]];
+                optionFrom.SetNext(optionToConditionToAttach[1], NodeType.Condition);
+
+                optionToConditionToAttach.Clear();
+                optionToNodeToAttach.Clear();                
+            }
+        }
+        #endregion
+
+        #endregion
+        #region Condition -> [Success] -> Condition
+
+        if (conditionSuccessToConditionToAttach.Count == 1)
+        {
+            int from = EditorInfo.ConditionsIndexes[conditionSuccessToConditionToAttach[0]];
+
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.FromSuccesConnection);
+            repaint = true;
+        }
+        else
+        {
+            if (conditionSuccessToConditionToAttach.Count == 2)
+            {
+                ConditionNode nodeFrom = CurrentConditions[conditionSuccessToConditionToAttach[0]];
+                nodeFrom.SetSuccessTarget(conditionSuccessToConditionToAttach[1], NodeType.Condition);
+
+                conditionSuccessToConditionToAttach.Clear();
+            }
+        }
+
+        #endregion
+        #region Condition -> [Success] -> Node
+
+        if (conditionSuccessToNodeToAttach.Count == 1)
+        {
+            int from = EditorInfo.ConditionsIndexes[conditionSuccessToNodeToAttach[0]];
+
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.FromSuccesConnection);
+            repaint = true;
+        }
+        else
+        {
+            if (conditionSuccessToNodeToAttach.Count == 2)
+            {
+                ConditionNode nodeFrom = CurrentConditions[conditionSuccessToNodeToAttach[0]];
+                nodeFrom.SetSuccessTarget(conditionSuccessToNodeToAttach[1], NodeType.Node);
+
+                conditionSuccessToNodeToAttach.Clear();
+            }
+        }
+
+        #endregion
+        #region Condition -> [Failure] -> Condition
+
+        if (conditionFailToConditionToAttach.Count == 1)
+        {
+            int from = EditorInfo.ConditionsIndexes[conditionFailToConditionToAttach[0]];
+
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.FromFailureConnection);
+            repaint = true;
+        }
+        else
+        {
+            if (conditionFailToConditionToAttach.Count == 2)
+            {
+                ConditionNode nodeFrom = CurrentConditions[conditionFailToConditionToAttach[0]];
+                nodeFrom.SetFailureTarget(conditionFailToConditionToAttach[1], NodeType.Condition);
+
+                conditionFailToConditionToAttach.Clear();
+            }
+        }
+
+        #endregion
+        #region Condition -> [Failure] -> Node
+
+        if (conditionFailToNodeToAttach.Count == 1)
+        {
+            int from = EditorInfo.ConditionsIndexes[conditionFailToNodeToAttach[0]];
+
+            DrawNodeCurve(EditorInfo.Windows[from], cursorRect, config.FromFailureConnection);
+            repaint = true;
+        }
+        else
+        {
+            if (conditionFailToNodeToAttach.Count == 2)
+            {
+                ConditionNode nodeFrom = CurrentConditions[conditionFailToNodeToAttach[0]];
+                nodeFrom.SetFailureTarget(conditionFailToNodeToAttach[1], NodeType.Node);
+
+                conditionFailToNodeToAttach.Clear();
+            }
+        }
+
+        #endregion
+        #region Condition -> Entry Option
+
+        if (conditionToEntryOption.Count == 1)
+        {
+            int to = EditorInfo.ConditionsIndexes[conditionToEntryOption[0]];
+
+            DrawNodeCurve(cursorRect, EditorInfo.Windows[to], config.EntryConditionConnection);
+            repaint = true;
+        }
+        else
+        {
+            if (conditionToEntryOption.Count == 2)
+            {
+                ConditionNode nodeTo = CurrentConditions[conditionToEntryOption[0]];
+                DialogueOption optionFrom = CurrentOptions[conditionToEntryOption[1]];
+                //nodeFrom.SetFailureTarget(conditionToFailConditionToAttach[1], NodeType.Condition);
+
+                optionFrom.SetEntryCondition(nodeTo);                
+
+                conditionToEntryOption.Clear();
+            }
+        }
+
+        #endregion
+        #endregion
+
+        #region Drawing established connections TOFINISH
+        foreach (DialogueNode nodeFrom in CurrentNodes)
         {
             int from = EditorInfo.NodesIndexes[nodeFrom.NodeID];
 
@@ -245,11 +419,17 @@ public class NodeEditor : EditorWindow
                 nodeFrom.GetTarget(out targID, out targType);
 
                 if (targID == Dialogue.ExitDialogue) continue;
-                if(targType == NodeType.Node)
+
+                if (targType == NodeType.Node)
                 {
                     int to = EditorInfo.NodesIndexes[targID];
-
                     DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.ImmidiateNodeConnection);
+                }
+
+                if(targType == NodeType.Condition)
+                {
+                    int to = EditorInfo.ConditionsIndexes[targID];
+                    DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.ToConditionConnection);
                 }
             }
             else
@@ -257,7 +437,6 @@ public class NodeEditor : EditorWindow
                 foreach(int optInd in nodeFrom.OptionsAttached)
                 {
                     int to = EditorInfo.OptionsIndexes[optInd];
-
                     DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.NodeToOptionConnection);
                 }
             }
@@ -266,15 +445,72 @@ public class NodeEditor : EditorWindow
         foreach(DialogueOption optionFrom in CurrentOptions)
         {            
             int from = EditorInfo.OptionsIndexes[optionFrom.OptionID];
-                        
-            if(optionFrom.NextType == NodeType.Node)
+            
+            if(optionFrom.EntryConditionSet)
             {
-                int to = EditorInfo.NodesIndexes[optionFrom.NextID];
-                DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.OptionToNodeConnection);
+                int entryCondition = EditorInfo.ConditionsIndexes[optionFrom.EntryCondition.ConditionID];
+                DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[entryCondition], config.EntryConditionConnection);
+            }
+
+            int to = -1;  
+                                 
+            switch(optionFrom.NextType)
+            {
+                case NodeType.Node:
+                    to = EditorInfo.NodesIndexes[optionFrom.NextID];
+                    DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.OptionToNodeConnection);
+                    break;
+
+                case NodeType.Condition:
+                    to = EditorInfo.ConditionsIndexes[optionFrom.NextID];
+                    DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.ToConditionConnection);
+                    break;
             }
         }
 
-        if(repaint)
+        foreach(ConditionNode conditionFrom in CurrentConditions)
+        {
+            int from = EditorInfo.ConditionsIndexes[conditionFrom.ConditionID];
+            int to = Dialogue.ExitDialogue;
+
+            switch(conditionFrom.SuccessTargetType)
+            {
+                case NodeType.Condition:
+                    to = EditorInfo.ConditionsIndexes[conditionFrom.SuccessTarget];
+                    break;
+
+                case NodeType.Node:
+                    to = EditorInfo.NodesIndexes[conditionFrom.SuccessTarget];
+                    break;
+            }
+
+            if(to != Dialogue.ExitDialogue)
+            {
+                DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.FromSuccesConnection);
+            }
+
+            to = Dialogue.ExitDialogue;
+
+            switch (conditionFrom.FailureTargetType)
+            {
+                case NodeType.Condition:
+                    to = EditorInfo.ConditionsIndexes[conditionFrom.FailureTarget];
+                    break;
+
+                case NodeType.Node:
+                    to = EditorInfo.NodesIndexes[conditionFrom.FailureTarget];
+                    break;
+            }
+
+            if (to != Dialogue.ExitDialogue)
+            {
+                DrawNodeCurve(EditorInfo.Windows[from], EditorInfo.Windows[to], config.FromFailureConnection);
+            }
+        }
+
+        #endregion
+
+        if (repaint)
         {
             Repaint();
         }
@@ -331,6 +567,7 @@ public class NodeEditor : EditorWindow
                 for (int i = 0; i < EditorInfo.Windows.Count; i++)
                 {
                     bool isNode = EditorInfo.WindowTypes[i] == NodeType.Node;
+                    bool isOption = EditorInfo.WindowTypes[i] == NodeType.Option;
 
                     if (isNode)
                     {                        
@@ -339,8 +576,16 @@ public class NodeEditor : EditorWindow
                     }
                     else
                     {
-                        EditorInfo.Windows[i] =
-                            GUILayout.Window(i, EditorInfo.Windows[i], DrawOptionWindow, "Option " + EditorInfo.NodeTypesIDs[i]);
+                        if (isOption)
+                        {
+                            EditorInfo.Windows[i] =
+                                GUILayout.Window(i, EditorInfo.Windows[i], DrawOptionWindow, "Option " + EditorInfo.NodeTypesIDs[i]);
+                        }
+                        else
+                        {
+                            EditorInfo.Windows[i] =
+                                GUILayout.Window(i, EditorInfo.Windows[i], DrawConditionWindow, "Condition " + EditorInfo.NodeTypesIDs[i]);
+                        }
                     }
                 }
 
@@ -414,6 +659,23 @@ public class NodeEditor : EditorWindow
                 SaveChanges("Create Dialogue Option");
             }
 
+            if(GUILayout.Button("Create Condition Node"))
+            {
+                ConditionNode newCondition = new ConditionNode();                                
+                newCondition.ConditionID = EditorInfo.Conditions;                
+                CurrentConditions.Add(newCondition);
+
+                EditorInfo.Windows.Add(new Rect(10 + scrollPosition.x, 10 + scrollPosition.y, 200, 5));
+                EditorInfo.WindowTypes.Add(NodeType.Condition);
+                EditorInfo.NodeTypesIDs.Add(EditorInfo.Conditions++);
+                EditorInfo.ConditionsIndexes.Add(EditorInfo.Windows.Count - 1);
+
+                if (newCondition.SetRandomizerCondition(0, 10, 5) == null) Debug.Log("Uh-oh...");
+                
+
+                SaveChanges("Create Condition Node");
+            }
+
             if (GUILayout.Button("Sort"))
             {
                 WriteDebug("Not Implemented Function");
@@ -476,6 +738,7 @@ public class NodeEditor : EditorWindow
                     nodeAwaiting.RevertToRegularNode();
                 }
                 nodeToNodeToAttach.Clear();
+                nodeToConditionToAttach.Clear();
             }
         }
 
@@ -492,7 +755,11 @@ public class NodeEditor : EditorWindow
             {
                 GUILayout.Label(destination);
 
-                Rect focus = EditorInfo.Windows[EditorInfo.NodesIndexes[currentOption.NextID]];
+                Rect focus =
+                    (currentOption.NextType == NodeType.Node) ?
+                        EditorInfo.Windows[EditorInfo.NodesIndexes[currentOption.NextID]] :
+                        EditorInfo.Windows[EditorInfo.ConditionsIndexes[currentOption.NextID]];
+
                 DrawJumpToButton("Go To", focus, GUILayout.Width(50));
             }
             else
@@ -509,15 +776,18 @@ public class NodeEditor : EditorWindow
             }
             else
             {
-                if (optionToNodeToAttach.Count == 0)
+                if (optionToNodeToAttach.Count == 0 && optionToConditionToAttach.Count == 0)
                 {
                     if (!tempCont)
                     {
                         if (GUILayout.Button("Set"))
                         {
                             optionToNodeToAttach.Add(typeid);
+                            optionToConditionToAttach.Add(typeid);
+
                             nodeToOptionToAttach.Clear();
                             nodeToNodeToAttach.Clear();
+                            nodeToConditionToAttach.Clear();
                         }
                     }
                     else
@@ -533,6 +803,7 @@ public class NodeEditor : EditorWindow
                     if(GUILayout.Button("Cancel"))
                     {
                         optionToNodeToAttach.Clear();
+                        optionToConditionToAttach.Clear();
                     }
                 }
             }
@@ -545,34 +816,41 @@ public class NodeEditor : EditorWindow
 
         #endregion
         #region Connect Entry Condition
-
-        GUILayout.BeginHorizontal();
+          
+        if (!AnyConditionAwaitingConnection())
         {
-            GUILayout.Label("Entry Condition: ");
-
-            if(!currentOption.EntryConditionSet)
+            GUILayout.BeginHorizontal();
             {
-                GUILayout.Label("[none]");
+                GUILayout.Label("Entry Condition: ");
 
-                if(GUILayout.Button("Set"))
+                if (!currentOption.EntryConditionSet)
                 {
+                    GUILayout.Label("[none]");
+                }
+                else
+                {
+                    DrawJumpToButton("Go To", EditorInfo.Windows[EditorInfo.ConditionsIndexes[currentOption.EntryCondition.ConditionID]]);
 
+                    if (GUILayout.Button("x"))
+                    {
+                        currentOption.ClearEntryCondition();
+                    }
                 }
             }
-            else
-            {
-                if(GUILayout.Button("Go To"))
-                {
-
-                }
-
-                if(GUILayout.Button("x"))
-                {
-                    currentOption.ClearEntryCondition();
-                }
-            }
+            GUILayout.EndHorizontal();
         }
-        GUILayout.EndHorizontal();
+        else
+        {
+            if(!currentOption.EntryConditionSet && GUILayout.Button("Connect As Entry Condition"))
+            {
+                conditionToEntryOption.Add(typeid);
+
+                conditionFailToConditionToAttach.Clear();
+                conditionFailToNodeToAttach.Clear();
+                conditionSuccessToConditionToAttach.Clear();
+                conditionSuccessToNodeToAttach.Clear();                
+            }
+        }                
         #endregion
         #region Option Text        
         string prev = currentOption.OptionText;
@@ -621,18 +899,42 @@ public class NodeEditor : EditorWindow
 
         #region Connecting Buttons
 
+        if(AnyConditionAwaitingConnection())
+        {
+            if (conditionFailToNodeToAttach.Count == 1 && GUILayout.Button("Connect Node To Condition Failure"))
+            {
+                conditionFailToNodeToAttach.Add(typeid);
+
+                conditionFailToConditionToAttach.Clear();
+                conditionSuccessToConditionToAttach.Clear();
+                conditionSuccessToNodeToAttach.Clear();
+                conditionToEntryOption.Clear();                
+            }
+
+            if(conditionSuccessToNodeToAttach.Count == 1 && GUILayout.Button("Connect Node To Condition Success"))
+            {
+                conditionSuccessToNodeToAttach.Add(typeid);
+
+                conditionFailToNodeToAttach.Clear();
+                conditionFailToConditionToAttach.Clear();
+                conditionSuccessToConditionToAttach.Clear();                
+                conditionToEntryOption.Clear();
+            }
+        }
+
         if (optionToNodeToAttach.Count == 0)
         {
             if (nodeToNodeToAttach.Count == 0 && nodeToOptionToAttach.Count == 0)
             {
                 if (!currentNode.ImmediateNode)
                 {
-                    if (GUILayout.Button("Connect Node"))
+                    if (!AnyConditionAwaitingConnection() && GUILayout.Button("Connect Node"))
                     {
-                        List<int> optsAttached = new List<int>(currentNode.OptionsAttached);
+                        //List<int> optsAttached = new List<int>(currentNode.OptionsAttached);
 
                         nodeToNodeToAttach.Add(typeid);
                         nodeToOptionToAttach.Add(typeid);
+                        nodeToConditionToAttach.Add(typeid);
                     }
                 }
                 else
@@ -653,7 +955,12 @@ public class NodeEditor : EditorWindow
 
                             if (!nextIsExit)
                             {
-                                Rect focus = EditorInfo.Windows[EditorInfo.NodesIndexes[nxt]];
+                                Rect focus =
+                                    (nxtType == NodeType.Node) ?
+                                        EditorInfo.Windows[EditorInfo.NodesIndexes[nxt]] :
+                                        ((nxtType == NodeType.Exit) ? EditorInfo.Windows[EditorInfo.ConditionsIndexes[nxt]] :
+                                            new Rect(0, 0, 1, 1)
+                                        );
                                 DrawJumpToButton("Go To", focus, GUILayout.Width(50));
                             }
 
@@ -694,12 +1001,14 @@ public class NodeEditor : EditorWindow
                                   {
                                       nodeToNodeToAttach.Clear();
                                       nodeToOptionToAttach.Clear();
+                                      nodeToConditionToAttach.Clear();
                                   }
 
                                   if (GUILayout.Button("Exits Dialogue"))
                                   {
                                       nodeToNodeToAttach.Add(-1);
                                       nodeToOptionToAttach.Clear();
+                                      nodeToConditionToAttach.Clear();
                                   }
                               }
                               );
@@ -712,6 +1021,7 @@ public class NodeEditor : EditorWindow
                     {
                         nodeToNodeToAttach.Clear();
                         nodeToOptionToAttach.Clear();
+                        nodeToConditionToAttach.Clear();
                     }
                 }
             }
@@ -878,6 +1188,182 @@ public class NodeEditor : EditorWindow
         }
     }    
 
+    void DrawConditionWindow(int id)
+    {
+        int typeID = EditorInfo.NodeTypesIDs[id];
+        ConditionNode currentCondition = CurrentConditions[typeID];
+
+        if((AnyConditionAwaitingConnection() || nodeToConditionToAttach.Count == 1 || optionToConditionToAttach.Count == 1) && !ThisConditionAwaitingConnection(typeID))
+        {
+            if(nodeToConditionToAttach.Count == 1 && GUILayout.Button("Connect Node To Condition"))
+            {
+                nodeToConditionToAttach.Add(typeID);                
+            }
+
+            if (optionToConditionToAttach.Count == 1 && GUILayout.Button("Connect Option To Condition"))
+            {
+                optionToConditionToAttach.Add(typeID);
+            }
+
+            if (conditionFailToConditionToAttach.Count == 1 && GUILayout.Button("Connect Failure To Condition"))
+            {
+                conditionFailToConditionToAttach.Add(typeID);
+
+                nodeToConditionToAttach.Clear();
+                conditionToEntryOption.Clear();
+                conditionFailToNodeToAttach.Clear();
+            }
+
+            if (conditionSuccessToConditionToAttach.Count == 1 && GUILayout.Button("Connect Success To Condition"))
+            {
+                conditionSuccessToConditionToAttach.Add(typeID);
+
+                nodeToConditionToAttach.Clear();
+                conditionToEntryOption.Clear();
+                conditionSuccessToNodeToAttach.Clear();
+            }
+        }
+
+        GUILayout.BeginHorizontal();
+        {
+            GUILayout.Label("Target If Success: ", GUILayout.Width(110));
+
+            if(currentCondition.SuccessTargetType == NodeType.Exit)
+            {
+                GUILayout.Label("[EXIT]", GUILayout.Width(50));
+            }
+            else
+            {
+                string nodeType = currentCondition.SuccessTargetType.ToString(true);
+                string targetId = currentCondition.SuccessTarget.ToString();
+
+                //GUILayout.Label();
+                int windowIndex =
+                    (currentCondition.SuccessTargetType == NodeType.Condition) ?
+                        EditorInfo.ConditionsIndexes[currentCondition.SuccessTarget] :
+                            ((currentCondition.SuccessTargetType == NodeType.Node) ?
+                                EditorInfo.NodesIndexes[currentCondition.SuccessTarget] :
+                                EditorInfo.OptionsIndexes[currentCondition.SuccessTarget]
+                            );
+
+                DrawJumpToButton(nodeType + " " + targetId, EditorInfo.Windows[windowIndex]);
+            }
+
+            if(!AnyConditionAwaitingConnection() && GUILayout.Button("Set"))
+            {
+                conditionToEntryOption.Add(typeID);
+                conditionSuccessToConditionToAttach.Add(typeID);
+                conditionSuccessToNodeToAttach.Add(typeID);
+            }
+
+            if (ThisConditionSuccessAwaitingConnection(typeID) && GUILayout.Button("Set [EXIT]"))
+            {
+                ClearConditionToAttachLists();
+                currentCondition.SetSuccessTarget(Dialogue.ExitDialogue, NodeType.Exit);
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.BeginHorizontal();
+        {
+            GUILayout.Label("Target If Failure: ", GUILayout.Width(110));
+
+            if (currentCondition.FailureTargetType == NodeType.Exit)
+            {
+                GUILayout.Label("[EXIT]", GUILayout.Width(50));
+            }
+            else
+            {
+                string nodeType = currentCondition.FailureTargetType.ToString(true);
+                string targetId = currentCondition.FailureTarget.ToString();
+
+                //GUILayout.Label(nodeType + " " + targetId);
+
+                int windowIndex =
+                        (currentCondition.FailureTargetType == NodeType.Condition) ?
+                            EditorInfo.ConditionsIndexes[currentCondition.FailureTarget] :
+                                ((currentCondition.FailureTargetType == NodeType.Node) ?
+                                    EditorInfo.NodesIndexes[currentCondition.FailureTarget] :
+                                    EditorInfo.OptionsIndexes[currentCondition.FailureTarget]
+                                );
+
+                DrawJumpToButton(nodeType + " " + targetId, EditorInfo.Windows[windowIndex]);
+            }
+
+            if (!AnyConditionAwaitingConnection() && GUILayout.Button("Set"))
+            {
+                conditionToEntryOption.Add(typeID);
+                conditionFailToConditionToAttach.Add(typeID);
+                conditionFailToNodeToAttach.Add(typeID);
+            }
+
+            if(ThisConditionFailAwaitingConnection(typeID) && GUILayout.Button("Set [EXIT]"))
+            {
+                ClearConditionToAttachLists();
+
+                currentCondition.SetFailureTarget(Dialogue.ExitDialogue, NodeType.Exit);
+            }
+        }
+        GUILayout.EndHorizontal();        
+
+        if (ThisConditionAwaitingConnection(typeID) && GUILayout.Button("Cancel Connection"))
+        {
+            ClearConditionToAttachLists();
+        }
+
+        if(GUILayout.Button("Delete Condition"))
+        {
+            DeleteConditionWindow(id, typeID);
+            SaveChanges("Delete Condition");
+            return;
+        }
+
+        GUI.DragWindow();
+    }
+
+    void ClearConditionToAttachLists()
+    {
+        conditionSuccessToNodeToAttach.Clear();
+        conditionSuccessToConditionToAttach.Clear();
+        conditionFailToNodeToAttach.Clear();
+        conditionFailToConditionToAttach.Clear();
+        conditionToEntryOption.Clear();
+    }
+
+    bool AnyConditionAwaitingConnection()
+    {
+        return
+            conditionToEntryOption.Count == 1 ||
+            conditionSuccessToNodeToAttach.Count == 1 ||
+            conditionSuccessToConditionToAttach.Count == 1 ||
+            conditionFailToConditionToAttach.Count == 1 ||
+            conditionFailToNodeToAttach.Count == 1;
+    }
+
+    bool ThisConditionAwaitingConnection(int idOfType)
+    {
+        return
+            (conditionToEntryOption.Count == 1 && conditionToEntryOption[0] == idOfType) ||
+            (conditionSuccessToNodeToAttach.Count == 1 && conditionSuccessToNodeToAttach[0] == idOfType) ||
+            (conditionSuccessToConditionToAttach.Count == 1 && conditionSuccessToConditionToAttach[0] == idOfType) ||
+            (conditionFailToConditionToAttach.Count == 1 && conditionFailToConditionToAttach[0] == idOfType) ||
+            (conditionFailToNodeToAttach.Count == 1 && conditionFailToNodeToAttach[0] == idOfType);
+    }
+
+    bool ThisConditionSuccessAwaitingConnection(int idOfType)
+    {
+        return
+            (conditionSuccessToNodeToAttach.Count == 1 && conditionSuccessToNodeToAttach[0] == idOfType) ||
+            (conditionSuccessToConditionToAttach.Count == 1 && conditionSuccessToConditionToAttach[0] == idOfType);
+    }
+
+    bool ThisConditionFailAwaitingConnection(int idOfType)
+    {
+        return
+            (conditionFailToConditionToAttach.Count == 1 && conditionFailToConditionToAttach[0] == idOfType) ||
+            (conditionFailToNodeToAttach.Count == 1 && conditionFailToNodeToAttach[0] == idOfType);
+    }
+
     void FocusOnRect(Rect rect)
     {
         scrollPosition = rect.center - new Vector2(position.width/2, position.height/2);
@@ -905,8 +1391,10 @@ public class NodeEditor : EditorWindow
 
         CurrentOptions.RemoveAt(idOfType);
         nodeToNodeToAttach.Clear();
+        nodeToConditionToAttach.Clear();
         nodeToOptionToAttach.Clear();
         optionToNodeToAttach.Clear();
+        ClearConditionToAttachLists();
         
         foreach(int nodeIndex in EditorInfo.NodesOptionsFoldouts.Keys)
         {
@@ -934,7 +1422,12 @@ public class NodeEditor : EditorWindow
             EditorInfo.NodesIndexes[i]--;
         }
 
-        foreach(DialogueOption opt in CurrentOptions)
+        for (int i = EditorInfo.ConditionsIndexes.FindIndex(x => x > id); i < EditorInfo.ConditionsIndexes.Count && i >= 0; i++)
+        {
+            EditorInfo.ConditionsIndexes[i]--;
+        }
+
+        foreach (DialogueOption opt in CurrentOptions)
         {
             if(opt.OptionID > idOfType)
             {
@@ -988,20 +1481,20 @@ public class NodeEditor : EditorWindow
     void DeleteNodeWindow(int id, int idOfType)
     {
         EditorInfo.Windows.RemoveAt(id);
-
         EditorInfo.WindowTypes.RemoveAt(id);
         EditorInfo.NodeTypesIDs.RemoveAt(id);
         EditorInfo.NodesIndexes.RemoveAt(idOfType);
+        EditorInfo.NodesOptionsFoldouts.Remove(idOfType);
         EditorInfo.Nodes--;
 
         CurrentNodes.RemoveAt(idOfType);
         nodeToNodeToAttach.Clear();
-        EditorInfo.NodesOptionsFoldouts.Remove(idOfType);
-
+        nodeToConditionToAttach.Clear();
         nodeToOptionToAttach.Clear();
         optionToNodeToAttach.Clear();
+        ClearConditionToAttachLists();
 
-        for(int i = 0; i < EditorInfo.NodeTypesIDs.Count; i++)
+        for (int i = 0; i < EditorInfo.NodeTypesIDs.Count; i++)
         {
             if(EditorInfo.WindowTypes[i] == NodeType.Node && EditorInfo.NodeTypesIDs[i] > idOfType)
             {
@@ -1018,8 +1511,14 @@ public class NodeEditor : EditorWindow
         {
             EditorInfo.OptionsIndexes[i]--;
         }
-        
-        foreach(DialogueNode dialNode in CurrentNodes)
+
+        for (int i = EditorInfo.ConditionsIndexes.FindIndex(x => x > id); i < EditorInfo.ConditionsIndexes.Count && i >= 0; i++)
+        {
+            EditorInfo.ConditionsIndexes[i]--;
+        }
+
+
+        foreach (DialogueNode dialNode in CurrentNodes)
         {
             if(dialNode.NodeID > idOfType)
             {
@@ -1081,7 +1580,165 @@ public class NodeEditor : EditorWindow
             }
         }
 
+        foreach(ConditionNode cond in CurrentConditions)
+        {
+            if(cond.SuccessTargetType == NodeType.Node)
+            {
+                if (cond.SuccessTarget == idOfType)
+                {
+                    cond.SetSuccessTarget(Dialogue.ExitDialogue, NodeType.Exit);
+                }
+                else
+                {
+                    if(cond.SuccessTarget > idOfType)
+                    {
+                        cond.SetSuccessTarget(cond.SuccessTarget - 1, NodeType.Node);
+                    }
+                }
+            }
+
+            if (cond.FailureTargetType == NodeType.Node)
+            {
+                if (cond.FailureTarget == idOfType)
+                {
+                    cond.SetFailureTarget(Dialogue.ExitDialogue, NodeType.Exit);
+                }
+                else
+                {
+                    if(cond.FailureTarget > idOfType)
+                    {
+                        cond.SetFailureTarget(cond.FailureTarget - 1, NodeType.Node);
+                    }
+                }
+            }
+        }
+
         WriteDebug("Deleting node " + idOfType + " and it's associations.");        
+    }
+
+    void DeleteConditionWindow(int id, int idOfType)
+    {
+        EditorInfo.Windows.RemoveAt(id);
+
+        EditorInfo.WindowTypes.RemoveAt(id);
+        EditorInfo.NodeTypesIDs.RemoveAt(id);
+        EditorInfo.ConditionsIndexes.RemoveAt(idOfType);
+        EditorInfo.Conditions--;
+
+        CurrentConditions.RemoveAt(idOfType);
+        nodeToNodeToAttach.Clear();
+        nodeToConditionToAttach.Clear();
+
+        nodeToOptionToAttach.Clear();
+        optionToNodeToAttach.Clear();
+        ClearConditionToAttachLists();
+
+        for (int i = 0; i < EditorInfo.NodeTypesIDs.Count; i++)
+        {
+            if (EditorInfo.WindowTypes[i] == NodeType.Condition && EditorInfo.NodeTypesIDs[i] > idOfType)
+            {
+                EditorInfo.NodeTypesIDs[i]--;
+            }
+        }
+
+        for (int i = idOfType; i < EditorInfo.ConditionsIndexes.Count; i++)
+        {
+            EditorInfo.ConditionsIndexes[i]--;
+        }
+
+        for (int i = EditorInfo.OptionsIndexes.FindIndex(x => x > id); i < EditorInfo.OptionsIndexes.Count && i >= 0; i++)
+        {
+            EditorInfo.OptionsIndexes[i]--;
+        }
+
+        for (int i = EditorInfo.NodesIndexes.FindIndex(x => x > id); i < EditorInfo.NodesIndexes.Count && i >= 0; i++)
+        {
+            EditorInfo.NodesIndexes[i]--;
+        }
+
+        foreach (DialogueOption option in CurrentOptions)
+        {
+            if (option.EntryConditionSet)
+            {
+                if (option.EntryCondition.ConditionID == idOfType)
+                {
+                    Debug.Log("Usuwanie połączenia");
+                    option.ClearEntryCondition();
+                }
+            }
+
+            if(option.NextType == NodeType.Condition)
+            {
+                if(option.NextID == idOfType)
+                {
+                    option.SetNextNodeExit();
+                }
+                else
+                {
+                    if(option.NextID > idOfType)
+                    {
+                        option.SetNext(option.NextID - 1, NodeType.Condition);
+                    }
+                }
+            }
+        }
+
+        foreach(DialogueNode node in CurrentNodes)
+        {
+            int nxt; NodeType nxtType;
+            node.GetTarget(out nxt, out nxtType);
+
+            if(node.ImmediateNode && nxtType == NodeType.Condition)
+            {
+                if(nxt == idOfType)
+                {
+                    node.RevertToRegularNode();
+                }
+                else
+                {
+                    node.SetImmediateNodeTarget(nxt - 1, nxtType);
+                }
+            }
+        }
+
+        foreach (ConditionNode condition in CurrentConditions)
+        {            
+            if(condition.ConditionID > idOfType)
+            {
+                condition.ConditionID--;
+                Debug.Log("zmniejszenie ID warunku");
+            }
+
+            if(condition.FailureTargetType == NodeType.Condition)
+            {
+                if (condition.FailureTarget > idOfType)
+                {
+                    condition.SetFailureTarget(condition.FailureTarget - 1, NodeType.Condition);
+                }
+                else
+                {
+                    if(condition.FailureTarget == idOfType)
+                    {
+                        condition.SetFailureTarget(Dialogue.ExitDialogue, NodeType.Exit);
+                    }
+                }
+            }
+
+            if(condition.SuccessTargetType == NodeType.Condition)
+            {
+                if(condition.SuccessTarget > idOfType)
+                {
+                    condition.SetSuccessTarget(condition.SuccessTarget - 1, NodeType.Condition);
+                }
+                else
+                {
+                    if(condition.SuccessTarget == idOfType)
+                    {
+                        condition.SetSuccessTarget(Dialogue.ExitDialogue, NodeType.Exit);
+                    }
+                }
+            }
+        }        
     }
 
     void DrawNodeCurve(Rect start, Rect end)
@@ -1208,7 +1865,13 @@ public class EditorConfigurationData
     public Color ImmidiateNodeConnection;
     public Color NodeToOptionConnection;
     public Color OptionToNodeConnection;
-    public Color AreaBackgroundColor;
+
+    public Color ToConditionConnection;
+    public Color FromSuccesConnection;
+    public Color FromFailureConnection;
+    public Color EntryConditionConnection;
+
+    public Color AreaBackgroundColor;    
 
     public GUIStyle BoundingBoxStyle = null;
     public GUIStyle EditorAreaBackgroundStyle = null;
@@ -1230,7 +1893,11 @@ public class EditorConfigurationData
                 "NODE EDITOR: optionToNode",
                 "NODE EDITOR: editorBackground",
                 "NODE EDITOR: diagonalStart",
-                "NODE EDITOR: diagonalEnd"
+                "NODE EDITOR: diagonalEnd",
+                "NODE EDITOR: conditionConnection",
+                "NODE EDITOR: fromSuccess",
+                "NODE EDITOR: fromFailure",
+                "NODE EDITOR: entryCondition"
         };
 
     public string[] PreferencesKeys { get { return preferencesKeys; } }
@@ -1258,6 +1925,12 @@ public class EditorConfigurationData
             ImmidiateNodeConnection = Defaults.ImmidiateNodeConnection;
             NodeToOptionConnection = Defaults.NodeToOptionConnection;
             OptionToNodeConnection = Defaults.OptionToNodeConnection;
+
+            ToConditionConnection = Defaults.ToConditionConnection;
+            FromSuccesConnection = Defaults.FromSuccesConnection;
+            FromFailureConnection = Defaults.FromFailureConnection;
+            EntryConditionConnection = Defaults.EntryConditionConnection;
+
             AreaBackgroundColor = Defaults.AreaBackgroundColor;
             DiagonalEndPoints = false;
             DiagonalStartPoints = false;
@@ -1300,6 +1973,25 @@ public class EditorConfigurationData
             Debug.Log("Wtf");
         }
 
+        if(!TryParseFromString(EditorPrefs.GetString(preferencesKeys[6]), out ToConditionConnection))
+        {
+            Debug.Log("Wtf");
+        }
+
+        if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[7]), out FromSuccesConnection))
+        {
+            Debug.Log("Wtf");
+        }
+
+        if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[8]), out FromFailureConnection))
+        {
+            Debug.Log("Wtf");
+        }
+
+        if (!TryParseFromString(EditorPrefs.GetString(preferencesKeys[9]), out EntryConditionConnection))
+        {
+            Debug.Log("Wtf");
+        }
 
         DiagonalStartPoints = EditorPrefs.GetBool(preferencesKeys[4], false);
         DiagonalEndPoints = EditorPrefs.GetBool(preferencesKeys[5], false);
@@ -1411,6 +2103,12 @@ public class EditorConfigurationData
         ImmidiateNodeConnection = Color.red;
         NodeToOptionConnection = Color.black;
         OptionToNodeConnection = Color.blue;
+
+        ToConditionConnection = Color.yellow;
+        FromSuccesConnection = Color.yellow;
+        FromFailureConnection = Color.yellow;
+        EntryConditionConnection = Color.yellow;
+
         AreaBackgroundColor = new Color(0, 0.5f, 0, 0.4f);
     }
 }
