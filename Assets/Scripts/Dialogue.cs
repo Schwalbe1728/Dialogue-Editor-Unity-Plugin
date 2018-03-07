@@ -12,7 +12,12 @@ public class Dialogue : ScriptableObject
     public string Name { get { return this.name; } }
 
     [SerializeField]
-    private int startNodeID = 0;    
+    private int startID = 0;
+
+    [SerializeField]
+    private NodeType startType;
+
+    [SerializeField]   
     private int currentNodeID;
 
     [SerializeField]
@@ -26,6 +31,23 @@ public class Dialogue : ScriptableObject
     private DialogueEditorInfo editorInfo;
     
     public DialogueEditorInfo EditorInfo { get { return editorInfo; } set { editorInfo = value; } }
+
+    public int StartPointId { get { return startID; } }
+    public NodeType StartPointType { get { return startType; } }
+    public void SetStartPoint(int sID, NodeType sType)
+    {
+        if(sType == NodeType.Node || sType == NodeType.Condition)
+        {
+            startID = sID;
+            startType = sType;
+        }
+    }
+    public bool IsStartPoint(int sID, NodeType sType)
+    {
+        return StartPointId == sID && StartPointType == sType;
+    }
+
+
 
     #region Options
     public DialogueOption[] GetAllOptions()
@@ -167,7 +189,21 @@ public class Dialogue : ScriptableObject
 
     public void StartDialogue()
     {
-        currentNodeID = startNodeID;
+        int tempID = startID;
+
+        if (StartPointType == NodeType.Condition)
+        {
+            // oblicz pierwszy wyświetlony Node            
+            NodeType nxtType;
+
+            do
+            {
+                Conditions[tempID].ConditionTest(out tempID, out nxtType);
+            }
+            while (nxtType == NodeType.Condition);
+        }
+
+        currentNodeID = tempID;
         currentDialogue = this;
     }
 

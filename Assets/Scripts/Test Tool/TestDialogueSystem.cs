@@ -38,21 +38,24 @@ public class TestDialogueSystem : MonoBehaviour {
             Destroy(optionsPanel.transform.GetChild(i));
         }
 
-        foreach(int optionIndex in node.OptionsAttached)
+        if (!node.ImmediateNode)
         {
-            DialogueOption option = dialogue.GetOption(optionIndex);            
-
-            if(option.EntryConditionSet)
+            foreach (int optionIndex in node.OptionsAttached)
             {
-                
-            }
+                DialogueOption option = dialogue.GetOption(optionIndex);
 
-            if (option.CanDisplay)
-            {
-                GameObject prefabInstance = Instantiate(optionPrefab, optionsPanel.transform);
-                Button optionButton = prefabInstance.GetComponent<Button>();
+                if (option.EntryConditionSet)
+                {
 
-                optionButton.GetComponentInChildren<Text>().text = option.OptionText;
+                }
+
+                if (option.CanDisplay)
+                {
+                    GameObject prefabInstance = Instantiate(optionPrefab, optionsPanel.transform);
+                    Button optionButton = prefabInstance.GetComponent<Button>();
+
+                    optionButton.GetComponentInChildren<Text>().text = option.OptionText;
+                }
             }
         }
     }

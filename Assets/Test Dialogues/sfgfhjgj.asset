@@ -11,44 +11,97 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8c6d9b6ebdbdde428ba67696bc5b967, type: 3}
   m_Name: sfgfhjgj
   m_EditorClassIdentifier: 
-  startNodeID: 0
+  startID: 1
+  startType: 3
+  currentNodeID: 0
   Options: []
   Nodes:
   - nodeID: 0
+    isImmediateNode: 1
+    nextID: 0
+    nextType: 3
+    nodeText: Pass
+    customID: 
+    optionsIndexesList: 
+  - nodeID: 1
     isImmediateNode: 0
     nextID: -1
     nextType: 0
     nodeText: 
     customID: 
     optionsIndexesList: 
+  - nodeID: 2
+    isImmediateNode: 0
+    nextID: -1
+    nextType: 0
+    nodeText: 
+    customID: 
+    optionsIndexesList: 
+  - nodeID: 3
+    isImmediateNode: 0
+    nextID: -1
+    nextType: 0
+    nodeText: Fail
+    customID: 
+    optionsIndexesList: 
   Conditions:
   - ConditionType: 0
     randomizerCondition:
       MinValue: 0
-      MaxValue: 23
-      ValueChecked: 15
+      MaxValue: 10
+      ValueChecked: 5
     conditionID: 0
-    targetIDIfPassed: -1
-    targetTypeIfPassed: 0
-    targetIDIfFailed: -1
-    targetTypeIfFailed: 0
+    targetIDIfPassed: 1
+    targetTypeIfPassed: 1
+    targetIDIfFailed: 2
+    targetTypeIfFailed: 1
+  - ConditionType: 0
+    randomizerCondition:
+      MinValue: 0
+      MaxValue: 39
+      ValueChecked: 5
+    conditionID: 1
+    targetIDIfPassed: 0
+    targetTypeIfPassed: 1
+    targetIDIfFailed: 3
+    targetTypeIfFailed: 1
   editorInfo:
     Windows:
     - serializedVersion: 2
-      x: 133
-      y: 53
-      width: 215
-      height: 156
+      x: 520
+      y: 65
+      width: 228
+      height: 173
     - serializedVersion: 2
-      x: 471
-      y: 144
-      width: 200
-      height: 131
-    WindowTypes: 0300000001000000
-    NodeTypesIDs: 0000000000000000
+      x: 93
+      y: 409
+      width: 228
+      height: 153
+    - serializedVersion: 2
+      x: 543
+      y: 414
+      width: 228
+      height: 153
+    - serializedVersion: 2
+      x: 351
+      y: 358
+      width: 218
+      height: 197
+    - serializedVersion: 2
+      x: 10
+      y: 33
+      width: 250
+      height: 197
+    - serializedVersion: 2
+      x: 279
+      y: 186
+      width: 220
+      height: 152
+    WindowTypes: 010000000100000001000000030000000300000001000000
+    NodeTypesIDs: 000000000100000002000000000000000100000003000000
     OptionsIndexes: 
-    NodesIndexes: 01000000
-    ConditionsIndexes: 00000000
-    Nodes: 1
+    NodesIndexes: 00000000010000000200000005000000
+    ConditionsIndexes: 0300000004000000
+    Nodes: 4
     Options: 0
-    Conditions: 1
+    Conditions: 2

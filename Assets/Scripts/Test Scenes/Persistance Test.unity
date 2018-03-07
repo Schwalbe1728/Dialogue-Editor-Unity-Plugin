@@ -360,7 +360,7 @@ Prefab:
         type: 2}
       propertyPath: dialogue
       value: 
-      objectReference: {fileID: 11400000, guid: dc0611c6d570ee540a1b6725a4fd6e8d,
+      objectReference: {fileID: 11400000, guid: e77c972d4ccdbb6408cfda7cccfbe2cb,
         type: 2}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: c11e296814d94c944868e806c2b3f14e, type: 2}

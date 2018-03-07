@@ -541,6 +541,24 @@ public partial class NodeEditor : EditorWindow
         GUILayout.EndHorizontal();
     }
 
+    void DrawSetStartingPointButton(int id)
+    {
+        NodeType typeNode = EditorInfo.WindowTypes[id];
+        int startTypeId = EditorInfo.NodeTypesIDs[id];
+
+        if (!EditedDialogue.IsStartPoint(startTypeId, typeNode))
+        {
+            if (GUILayout.Button("Set As Start Point"))
+            {
+                EditedDialogue.SetStartPoint(startTypeId, typeNode);
+            }
+        }
+        else
+        {
+            GUILayout.Label("Starting Point of the Dialogue", EditorStyles.boldLabel);
+        }
+    }
+
     void DrawEditorArea()
     {
         Bounds border = new Bounds();
@@ -1038,7 +1056,7 @@ public partial class NodeEditor : EditorWindow
             }
         }
         #endregion
-        
+
         /*
         if (GUILayout.Button("Delete"))
         {
@@ -1047,6 +1065,8 @@ public partial class NodeEditor : EditorWindow
             return;
         }
         */
+        DrawSetStartingPointButton(id);
+
         string prevText = currentNode.Text;        
 
         currentNode.Text =
@@ -1225,6 +1245,8 @@ public partial class NodeEditor : EditorWindow
             }
         }
 
+        DrawSetStartingPointButton(id);
+
         GUILayout.BeginHorizontal();
         {
             GUILayout.Label("Target If Success: ", GUILayout.Width(110));
@@ -1326,14 +1348,24 @@ public partial class NodeEditor : EditorWindow
                 break;
         }
 
-        if (GUILayout.Button("Delete Condition"))
+        GUILayout.BeginHorizontal();
         {
-            DeleteConditionWindow(id, typeID);
-            SaveChanges("Delete Condition");
-            return;
-        }
+            DrawResizeButtons(id);
 
-        GUI.DragWindow();
+            if (GUILayout.Button("Delete Condition"))
+            {
+                DeleteConditionWindow(id, typeID);
+                SaveChanges("Delete Condition");
+                return;
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        if (!resizing)
+        {
+            Vector2 margin = new Vector2(DragAreaMargin, DragAreaMargin);
+            GUI.DragWindow(new Rect(Vector2.zero, EditorInfo.Windows[id].size - margin));
+        }
     }
 
     void ClearConditionToAttachLists()

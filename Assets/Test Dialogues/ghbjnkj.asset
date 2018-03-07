@@ -9,15 +9,33 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8c6d9b6ebdbdde428ba67696bc5b967, type: 3}
-  m_Name: marko
+  m_Name: ghbjnkj
   m_EditorClassIdentifier: 
   startID: 0
   startType: 0
   currentNodeID: 0
   Options:
   - optionID: 0
-    nextID: 1
+    nextID: 2
     nextType: 1
+    alreadyVisited: 0
+    entryCondition:
+      ConditionType: 0
+      randomizerCondition:
+        MinValue: 0
+        MaxValue: 0
+        ValueChecked: 0
+      conditionID: 0
+      targetIDIfPassed: -1
+      targetTypeIfPassed: 0
+      targetIDIfFailed: -1
+      targetTypeIfFailed: 0
+    entryConditionSet: 0
+    OptionText: Pytanie 1
+    VisitOnce: 0
+  - optionID: 1
+    nextID: -1
+    nextType: 0
     alreadyVisited: 0
     entryCondition:
       ConditionType: 0
@@ -33,7 +51,7 @@ MonoBehaviour:
     entryConditionSet: 0
     OptionText: 
     VisitOnce: 0
-  - optionID: 1
+  - optionID: 2
     nextID: -1
     nextType: 0
     alreadyVisited: 0
@@ -56,83 +74,61 @@ MonoBehaviour:
     isImmediateNode: 1
     nextID: 1
     nextType: 1
-    nodeText: Sssss
+    nodeText: "Wypowied\u017A NPC"
     customID: 
     optionsIndexesList: 
   - nodeID: 1
+    isImmediateNode: 0
+    nextID: -1
+    nextType: 0
+    nodeText: 
+    customID: 
+    optionsIndexesList: 000000000100000002000000
+  - nodeID: 2
     isImmediateNode: 1
-    nextID: 3
+    nextID: 1
     nextType: 1
-    nodeText: ddd
+    nodeText: "Odpowied\u017A na pytanie 1"
     customID: 
     optionsIndexesList: 
-  - nodeID: 2
-    isImmediateNode: 0
-    nextID: -1
-    nextType: 0
-    nodeText: 
-    customID: 
-    optionsIndexesList: 0000000001000000
-  - nodeID: 3
-    isImmediateNode: 0
-    nextID: -1
-    nextType: 0
-    nodeText: 
-    customID: 
-    optionsIndexesList: 01000000
-  Conditions:
-  - ConditionType: 0
-    randomizerCondition:
-      MinValue: 0
-      MaxValue: 10
-      ValueChecked: 5
-    conditionID: 0
-    targetIDIfPassed: 1
-    targetTypeIfPassed: 1
-    targetIDIfFailed: 2
-    targetTypeIfFailed: 1
+  Conditions: []
   editorInfo:
     Windows:
     - serializedVersion: 2
-      x: 10
-      y: 10
-      width: 228
-      height: 151
-    - serializedVersion: 2
-      x: 424
-      y: 42
-      width: 228
-      height: 209
-    - serializedVersion: 2
-      x: 107
-      y: 196
-      width: 200
-      height: 172
-    - serializedVersion: 2
-      x: 458
-      y: 309
-      width: 252
-      height: 178
-    - serializedVersion: 2
-      x: 23
-      y: 388
-      width: 228
-      height: 285
-    - serializedVersion: 2
-      x: 336
-      y: 535
-      width: 200
-      height: 172
-    - serializedVersion: 2
-      x: 790
-      y: 324
+      x: 64
+      y: 73
       width: 226
-      height: 149
-    WindowTypes: 01000000010000000200000003000000010000000200000001000000
-    NodeTypesIDs: 00000000010000000000000000000000020000000100000003000000
-    OptionsIndexes: 0200000005000000
-    NodesIndexes: 00000000010000000400000006000000
-    ConditionsIndexes: 03000000
-    Nodes: 4
-    Options: 2
-    Conditions: 1
+      height: 131
+    - serializedVersion: 2
+      x: 360
+      y: 146
+      width: 226
+      height: 245
+    - serializedVersion: 2
+      x: 76
+      y: 410
+      width: 200
+      height: 172
+    - serializedVersion: 2
+      x: 398
+      y: 662
+      width: 200
+      height: 172
+    - serializedVersion: 2
+      x: 596
+      y: 408
+      width: 200
+      height: 172
+    - serializedVersion: 2
+      x: 48
+      y: 653
+      width: 226
+      height: 131
+    WindowTypes: 010000000100000002000000020000000200000001000000
+    NodeTypesIDs: 000000000100000000000000010000000200000002000000
+    OptionsIndexes: 020000000300000004000000
+    NodesIndexes: 000000000100000005000000
+    ConditionsIndexes: 
+    Nodes: 3
+    Options: 3
+    Conditions: 0
