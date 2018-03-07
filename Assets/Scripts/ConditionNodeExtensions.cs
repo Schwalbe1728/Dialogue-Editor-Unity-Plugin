@@ -2,6 +2,8 @@
 
 public partial class ConditionNode
 {
+    public ConditionTypes ConditionType;
+
     public RandomizerCondition randomizerCondition;
 
     public override bool ConditionTest()
@@ -23,6 +25,12 @@ public partial class ConditionNode
 
         return randomizerCondition;
     }
+}
+
+[System.Serializable]
+public enum ConditionTypes
+{
+    RandomizerCondition
 }
 
 [System.Serializable]

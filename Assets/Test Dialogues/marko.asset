@@ -9,15 +9,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8c6d9b6ebdbdde428ba67696bc5b967, type: 3}
-  m_Name: jkrg
+  m_Name: marko
   m_EditorClassIdentifier: 
   startNodeID: 0
   Options:
   - optionID: 0
-    nextID: 0
-    nextType: 3
+    nextID: 1
+    nextType: 1
     alreadyVisited: 0
     entryCondition:
+      ConditionType: 0
       randomizerCondition:
         MinValue: 0
         MaxValue: 0
@@ -33,8 +34,8 @@ MonoBehaviour:
   Nodes:
   - nodeID: 0
     isImmediateNode: 1
-    nextID: 0
-    nextType: 3
+    nextID: 1
+    nextType: 1
     nodeText: 
     customID: 
     optionsIndexesList: 
@@ -45,55 +46,29 @@ MonoBehaviour:
     nodeText: 
     customID: 
     optionsIndexesList: 
-  - nodeID: 2
-    isImmediateNode: 0
-    nextID: -1
-    nextType: 0
-    nodeText: 
-    customID: 
-    optionsIndexesList: 
-  Conditions:
-  - randomizerCondition:
-      MinValue: 0
-      MaxValue: 10
-      ValueChecked: 5
-    conditionID: 0
-    targetIDIfPassed: 1
-    targetTypeIfPassed: 1
-    targetIDIfFailed: 2
-    targetTypeIfFailed: 1
+  Conditions: []
   editorInfo:
     Windows:
     - serializedVersion: 2
-      x: -1
-      y: 7
+      x: 10
+      y: 10
+      width: 226
+      height: 131
+    - serializedVersion: 2
+      x: 356
+      y: 11
+      width: 226
+      height: 209
+    - serializedVersion: 2
+      x: 115
+      y: 332
       width: 200
       height: 172
-    - serializedVersion: 2
-      x: 335
-      y: 51
-      width: 250
-      height: 105
-    - serializedVersion: 2
-      x: -1
-      y: 252
-      width: 228
-      height: 151
-    - serializedVersion: 2
-      x: 255
-      y: 388
-      width: 228
-      height: 131
-    - serializedVersion: 2
-      x: 481
-      y: 226
-      width: 220
-      height: 131
-    WindowTypes: 0200000003000000010000000100000001000000
-    NodeTypesIDs: 0000000000000000000000000100000002000000
-    OptionsIndexes: 00000000
-    NodesIndexes: 020000000300000004000000
-    ConditionsIndexes: 01000000
-    Nodes: 3
+    WindowTypes: 010000000100000002000000
+    NodeTypesIDs: 000000000100000000000000
+    OptionsIndexes: 02000000
+    NodesIndexes: 0000000001000000
+    ConditionsIndexes: 
+    Nodes: 2
     Options: 1
-    Conditions: 1
+    Conditions: 0

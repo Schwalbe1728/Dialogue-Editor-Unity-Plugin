@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Text;
 
-public class NodeEditor : EditorWindow
+public partial class NodeEditor : EditorWindow
 {
     Dialogue EditedDialogue;
     DialogueEditorInfo EditorInfo;
@@ -1033,6 +1033,7 @@ public class NodeEditor : EditorWindow
                 if(GUILayout.Button("Make Option's Target"))
                 {
                     optionToNodeToAttach.Add(typeid);
+                    optionToConditionToAttach.Clear();
                 }
             }
         }
@@ -1263,7 +1264,7 @@ public class NodeEditor : EditorWindow
             }
         }
         GUILayout.EndHorizontal();
-
+        
         GUILayout.BeginHorizontal();
         {
             GUILayout.Label("Target If Failure: ", GUILayout.Width(110));
@@ -1311,7 +1312,21 @@ public class NodeEditor : EditorWindow
             ClearConditionToAttachLists();
         }
 
-        if(GUILayout.Button("Delete Condition"))
+        ConditionTypes prevType = currentCondition.ConditionType;
+
+        currentCondition.ConditionType =
+            (ConditionTypes)EditorGUILayout.EnumPopup(currentCondition.ConditionType);
+
+        if(prevType != currentCondition.ConditionType) { /* kasowanie i tworzenie obiektów */ Debug.Log("Zmiana"); }
+
+        switch(currentCondition.ConditionType)
+        {
+            case ConditionTypes.RandomizerCondition:
+                DrawRandomizerConditionInterior(currentCondition);
+                break;
+        }
+
+        if (GUILayout.Button("Delete Condition"))
         {
             DeleteConditionWindow(id, typeID);
             SaveChanges("Delete Condition");
