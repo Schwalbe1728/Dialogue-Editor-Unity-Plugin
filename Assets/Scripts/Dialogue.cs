@@ -28,8 +28,8 @@ public class Dialogue : ScriptableObject
     private List<ConditionNode> Conditions;
 
     [SerializeField]
-    private DialogueEditorInfo editorInfo;
-    
+    private DialogueEditorInfo editorInfo;       
+
     public DialogueEditorInfo EditorInfo { get { return editorInfo; } set { editorInfo = value; } }
 
     public int StartPointId { get { return startID; } }
@@ -187,6 +187,7 @@ public class Dialogue : ScriptableObject
     }
     #endregion
 
+    // TODO: Dodać obiekt kontroli dialogów, który będzie mieć event OnDialogueEnded(string nextDialogue)
     public void StartDialogue()
     {
         int tempID = startID;
@@ -261,7 +262,14 @@ public class Dialogue : ScriptableObject
         }
         else
         {
-            throw new System.ArgumentException("Illegal node type");
+            if (targetType == NodeType.Exit)
+            {
+                // Fire event that load a new dialogue
+            }
+            else
+            {
+                throw new System.ArgumentException("Illegal node type");
+            }
         }
     }
 
@@ -292,7 +300,17 @@ public class Dialogue : ScriptableObject
             }
         }
 
-        currentNodeID = targetID;
+        if (targetType == NodeType.Node)
+        {
+            currentNodeID = targetID;
+        }
+        else
+        {
+            if(targetType == NodeType.Exit)
+            {
+                // Wywołaj event ładujący nowy dialog
+            }
+        }
     }
 }
 
@@ -363,6 +381,11 @@ public class DialogueNode
 
     [SerializeField]
     private List<int> optionsIndexesList;
+
+    [SerializeField]
+    private string nextDialogueID;
+
+    public string NextDialogueID { get { return nextDialogueID; } set { nextDialogueID = value; } }
 
     public int NodeID { get { return nodeID; } set { if (value >= 0) nodeID = value; } }    
     public string Text { get { return nodeText; } set { nodeText = value; } }
@@ -477,6 +500,10 @@ public class DialogueOption
     public int NextID { get { return nextID; } }
     public NodeType NextType { get { return nextType; } }
 
+    [SerializeField]
+    private string nextDialogueID;
+    public string NextDialogueID { get { return nextDialogueID; } set { nextDialogueID = value; } }
+
     public bool CanDisplay
     {
         get
@@ -553,7 +580,15 @@ public partial class ConditionNode : ConditionNodeBase
     public NodeType SuccessTargetType { get { return targetTypeIfPassed; } }
 
     public int FailureTarget { get { return targetIDIfFailed; } }
-    public NodeType FailureTargetType { get { return targetTypeIfFailed; } }    
+    public NodeType FailureTargetType { get { return targetTypeIfFailed; } }
+
+    [SerializeField]
+    private string nextDialogueIDIfPassed;
+    public string NextDialogueIDIfPassed { get { return nextDialogueIDIfPassed; } set { nextDialogueIDIfPassed = value; } }
+
+    [SerializeField]
+    private string nextDialogueIDIfFailed;
+    public string NextDialogueIDIfFailed { get { return nextDialogueIDIfFailed; } set { nextDialogueIDIfFailed = value; } }
 
     public bool ConditionChainElementTest(out int nextConditionID)
     {

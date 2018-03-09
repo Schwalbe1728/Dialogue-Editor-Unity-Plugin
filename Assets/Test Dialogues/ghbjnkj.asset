@@ -30,9 +30,12 @@ MonoBehaviour:
       targetTypeIfPassed: 0
       targetIDIfFailed: -1
       targetTypeIfFailed: 0
+      nextDialogueIDIfPassed: 
+      nextDialogueIDIfFailed: 
     entryConditionSet: 0
     OptionText: Pytanie 1
     VisitOnce: 0
+    nextDialogueID: 
   - optionID: 1
     nextID: -1
     nextType: 0
@@ -48,9 +51,12 @@ MonoBehaviour:
       targetTypeIfPassed: 0
       targetIDIfFailed: -1
       targetTypeIfFailed: 0
+      nextDialogueIDIfPassed: 
+      nextDialogueIDIfFailed: 
     entryConditionSet: 0
     OptionText: 
     VisitOnce: 0
+    nextDialogueID: 
   - optionID: 2
     nextID: -1
     nextType: 0
@@ -66,9 +72,12 @@ MonoBehaviour:
       targetTypeIfPassed: 0
       targetIDIfFailed: -1
       targetTypeIfFailed: 0
+      nextDialogueIDIfPassed: 
+      nextDialogueIDIfFailed: 
     entryConditionSet: 0
     OptionText: 
     VisitOnce: 0
+    nextDialogueID: Shit
   Nodes:
   - nodeID: 0
     isImmediateNode: 1
@@ -77,6 +86,7 @@ MonoBehaviour:
     nodeText: "Wypowied\u017A NPC"
     customID: 
     optionsIndexesList: 
+    nextDialogueID: 
   - nodeID: 1
     isImmediateNode: 0
     nextID: -1
@@ -84,6 +94,7 @@ MonoBehaviour:
     nodeText: 
     customID: 
     optionsIndexesList: 000000000100000002000000
+    nextDialogueID: 
   - nodeID: 2
     isImmediateNode: 1
     nextID: 1
@@ -91,39 +102,40 @@ MonoBehaviour:
     nodeText: "Odpowied\u017A na pytanie 1"
     customID: 
     optionsIndexesList: 
+    nextDialogueID: 
   Conditions: []
   editorInfo:
     Windows:
     - serializedVersion: 2
       x: 64
       y: 73
-      width: 226
-      height: 131
+      width: 228
+      height: 174
     - serializedVersion: 2
       x: 360
       y: 146
-      width: 226
-      height: 245
+      width: 228
+      height: 266
     - serializedVersion: 2
-      x: 76
-      y: 410
+      x: 16
+      y: 372
       width: 200
       height: 172
     - serializedVersion: 2
       x: 398
       y: 662
-      width: 200
-      height: 172
+      width: 210
+      height: 174
     - serializedVersion: 2
       x: 596
       y: 408
-      width: 200
-      height: 172
+      width: 210
+      height: 189
     - serializedVersion: 2
       x: 48
-      y: 653
-      width: 226
-      height: 131
+      y: 619
+      width: 228
+      height: 174
     WindowTypes: 010000000100000002000000020000000200000001000000
     NodeTypesIDs: 000000000100000000000000010000000200000002000000
     OptionsIndexes: 020000000300000004000000

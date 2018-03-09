@@ -760,11 +760,12 @@ public partial class NodeEditor : EditorWindow
             }
         }
 
+        bool tempCont = currentOption.NextType != NodeType.Exit;
+
         GUILayout.BeginHorizontal();
         {
             GUILayout.Label("Next Node: ");            
-            
-            bool tempCont = currentOption.NextType != NodeType.Exit;
+                        
             string destination =
                 (tempCont) ?
                     currentOption.NextID.ToString() :
@@ -827,6 +828,21 @@ public partial class NodeEditor : EditorWindow
             }
         }
         GUILayout.EndHorizontal();
+
+        if (!tempCont)
+        {
+            EditorGUILayout.BeginHorizontal();
+            {
+                EditorGUILayout.PrefixLabel("Next Dialogue ID: ");
+                currentOption.NextDialogueID = 
+                    EditorGUILayout.TextField(
+                        (currentOption.NextDialogueID == null)? 
+                            "" : currentOption.NextDialogueID
+                        );
+            }
+            EditorGUILayout.EndHorizontal();
+        }
+
         #endregion
         #region Visit Once
 
@@ -957,6 +973,8 @@ public partial class NodeEditor : EditorWindow
                 }
                 else
                 {
+                    bool nextIsExit = false;
+
                     GUIHelpers.GUIHorizontal(
                         delegate ()
                         {
@@ -966,7 +984,7 @@ public partial class NodeEditor : EditorWindow
                             NodeType nxtType;
                             currentNode.GetTarget(out nxt, out nxtType);
 
-                            bool nextIsExit = nxt == Dialogue.ExitDialogue;
+                            nextIsExit = nxt == Dialogue.ExitDialogue;
                             string nextString = (nextIsExit) ? "[EXIT]" : nxt.ToString();
 
                             GUILayout.Label(nextString);
@@ -976,7 +994,7 @@ public partial class NodeEditor : EditorWindow
                                 Rect focus =
                                     (nxtType == NodeType.Node) ?
                                         EditorInfo.Windows[EditorInfo.NodesIndexes[nxt]] :
-                                        ((nxtType == NodeType.Exit) ? EditorInfo.Windows[EditorInfo.ConditionsIndexes[nxt]] :
+                                        ((nxtType == NodeType.Condition) ? EditorInfo.Windows[EditorInfo.ConditionsIndexes[nxt]] :
                                             new Rect(0, 0, 1, 1)
                                         );
                                 DrawJumpToButton("Go To", focus, GUILayout.Width(50));
@@ -990,6 +1008,20 @@ public partial class NodeEditor : EditorWindow
                             }
                         }
                         );
+
+                    if(nextIsExit)
+                    {
+                        EditorGUILayout.BeginHorizontal();
+                        {
+                            EditorGUILayout.PrefixLabel("Next Dialogue ID: ");
+                            currentNode.NextDialogueID =
+                                EditorGUILayout.TextField(
+                                    (currentNode.NextDialogueID == null) ?
+                                        "" : currentNode.NextDialogueID
+                                    );
+                        }
+                        EditorGUILayout.EndHorizontal();
+                    }
                 }
             }
             else
@@ -1211,6 +1243,8 @@ public partial class NodeEditor : EditorWindow
 
     void DrawConditionWindow(int id)
     {
+        bool save = false;
+
         int typeID = EditorInfo.NodeTypesIDs[id];
         ConditionNode currentCondition = CurrentConditions[typeID];
 
@@ -1253,7 +1287,16 @@ public partial class NodeEditor : EditorWindow
 
             if(currentCondition.SuccessTargetType == NodeType.Exit)
             {
-                GUILayout.Label("[EXIT]", GUILayout.Width(50));
+                EditorGUILayout.BeginHorizontal();
+                {
+                    GUILayout.Label("[EXIT]", GUILayout.Width(50));
+                    currentCondition.NextDialogueIDIfPassed =
+                        EditorGUILayout.TextField(
+                            (currentCondition.NextDialogueIDIfPassed == null) ?
+                                "" : currentCondition.NextDialogueIDIfPassed
+                            );
+                }
+                EditorGUILayout.EndHorizontal();
             }
             else
             {
@@ -1292,8 +1335,17 @@ public partial class NodeEditor : EditorWindow
             GUILayout.Label("Target If Failure: ", GUILayout.Width(110));
 
             if (currentCondition.FailureTargetType == NodeType.Exit)
-            {
-                GUILayout.Label("[EXIT]", GUILayout.Width(50));
+            {                
+                EditorGUILayout.BeginHorizontal();
+                {
+                    GUILayout.Label("[EXIT]", GUILayout.Width(50));
+                    currentCondition.NextDialogueIDIfFailed =
+                        EditorGUILayout.TextField(
+                            (currentCondition.NextDialogueIDIfFailed == null) ?
+                                "" : currentCondition.NextDialogueIDIfFailed
+                            );
+                }
+                EditorGUILayout.EndHorizontal();
             }
             else
             {
@@ -1339,12 +1391,16 @@ public partial class NodeEditor : EditorWindow
         currentCondition.ConditionType =
             (ConditionTypes)EditorGUILayout.EnumPopup(currentCondition.ConditionType);
 
-        if(prevType != currentCondition.ConditionType) { /* kasowanie i tworzenie obiektów */ Debug.Log("Zmiana"); }
+        if(prevType != currentCondition.ConditionType)
+        { /* kasowanie i tworzenie obiektów */
+            Debug.Log("Zmiana");
+            save = true;
+        }
 
         switch(currentCondition.ConditionType)
         {
             case ConditionTypes.RandomizerCondition:
-                DrawRandomizerConditionInterior(currentCondition);
+                save |= DrawRandomizerConditionInterior(currentCondition);
                 break;
         }
 
@@ -1365,6 +1421,11 @@ public partial class NodeEditor : EditorWindow
         {
             Vector2 margin = new Vector2(DragAreaMargin, DragAreaMargin);
             GUI.DragWindow(new Rect(Vector2.zero, EditorInfo.Windows[id].size - margin));
+        }
+
+        if(save)
+        {
+            SaveChanges("Condition Node Window");
         }
     }
 

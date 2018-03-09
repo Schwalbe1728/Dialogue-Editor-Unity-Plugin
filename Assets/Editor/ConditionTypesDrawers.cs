@@ -3,7 +3,7 @@ using UnityEngine;
 
 public partial class NodeEditor
 {
-    public void DrawRandomizerConditionInterior(ConditionNode currentCondition)
+    public bool DrawRandomizerConditionInterior(ConditionNode currentCondition)
     {
         int min;
         int max;
@@ -43,9 +43,6 @@ public partial class NodeEditor
             currentCondition.randomizerCondition.ValueChecked = currentCondition.randomizerCondition.MaxValue;
         }
 
-        if(changed)
-        {
-            SaveChanges("Changed Randomized Condition values");
-        }
+        return changed;
     }
 }
